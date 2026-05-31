@@ -53,6 +53,8 @@ export function Sidebar() {
         {navItems.map(({ href, label, icon: Icon }) => {
           const isActive = href === "/topics"
             ? pathname === "/topics" || pathname.startsWith("/topics/")
+            : href === "/questions"
+            ? pathname === "/questions" || pathname.startsWith("/practice/")
             : href === "/"
             ? pathname === "/"
             : pathname.startsWith(href)

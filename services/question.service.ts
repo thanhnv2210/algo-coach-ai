@@ -22,6 +22,11 @@ export async function getQuestions(filters: QuestionFilters = {}) {
     .orderBy(questions.topicSlug)
 }
 
+export async function getQuestionById(id: string) {
+  const [q] = await db.select().from(questions).where(eq(questions.id, id)).limit(1)
+  return q ?? null
+}
+
 export async function updateQuestionStatus(id: string, status: QuestionStatus) {
   const [updated] = await db
     .update(questions)

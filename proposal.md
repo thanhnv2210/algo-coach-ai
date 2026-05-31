@@ -186,6 +186,8 @@ All under `/api/`.
 | GET | `/api/ai/recommendations` | Return latest saved learning plan |
 | POST | `/api/ai/recommendations` | Generate + save weekly learning plan via Claude |
 | POST | `/api/ai/insights` | Analyze weaknesses from question history |
+| POST | `/api/ai/review` | Claude structured code review (verdict, complexity, issues, improvements) |
+| POST | `/api/code/run` | Execute code via Judge0 CE (Python/JS/TS); requires JUDGE0_RAPIDAPI_KEY |
 
 MVP serves from static seed data. Phase 2 adds real DB persistence.
 
@@ -361,6 +363,7 @@ algo-coach-ai/
 ANTHROPIC_API_KEY=         # Claude — server-side only
 AI_MODEL=claude-sonnet-4-6 # Override model if needed
 DATABASE_URL=postgresql://ThanhNguyen@localhost:5432/algo_coach  # local dev
+JUDGE0_RAPIDAPI_KEY=  # optional — enables code execution; get free key at rapidapi.com/judge0-official/api/judge0-ce
 ```
 
 ---
@@ -575,7 +578,8 @@ algo-coach-status() {
 - [x] AI-generated weekly learning plans saved to DB — `learning_plans` table; POST saves plan; GET returns latest; AIPanel loads last plan on mount
 - [x] Confidence level self-rating on topic cards (implemented in Phase 3)
 
-### Phase 5 — Coding Playground
-- [ ] Embedded code editor (Monaco Editor)
-- [ ] Code execution (Judge0 API)
-- [ ] AI solution review via Claude tool use
+### Phase 5 — Coding Playground ✓ complete
+- [x] Embedded code editor — Monaco Editor (`@monaco-editor/react`) via dynamic import; Python 3 / JavaScript / TypeScript; language switcher resets to starter template
+- [x] Code execution — `POST /api/code/run` → Judge0 CE (RapidAPI); async submit → poll; shows stdout, stderr, status, time, memory; graceful 503 if `JUDGE0_RAPIDAPI_KEY` not set
+- [x] AI solution review — `POST /api/ai/review` → Claude `generateObject` with ReviewSchema (verdict, timeComplexity, spaceComplexity, correctness, issues, improvements, summary)
+- [x] Practice page at `/practice/[id]` — split layout: Monaco editor (left) + hints/output/review tabs (right); "Practice" button on every question row in the questions table

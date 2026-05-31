@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { ExternalLink } from "lucide-react"
+import Link from "next/link"
+import { ExternalLink, Code2 } from "lucide-react"
 import { cn } from "@/lib/utils/cn"
 import { StatusSelect } from "./status-select"
 import type { Question, QuestionStatus } from "@/lib/db/schema"
@@ -43,6 +44,7 @@ export function QuestionTable({ initialQuestions }: { initialQuestions: Question
             <th className="text-left py-3 pr-4 font-medium text-muted-foreground w-24">Difficulty</th>
             <th className="text-left py-3 pr-4 font-medium text-muted-foreground">Notes</th>
             <th className="text-left py-3 font-medium text-muted-foreground w-36">Status</th>
+            <th className="py-3 w-10" />
           </tr>
         </thead>
         <tbody>
@@ -71,6 +73,15 @@ export function QuestionTable({ initialQuestions }: { initialQuestions: Question
                   current={q.status as QuestionStatus}
                   onChange={handleStatusChange}
                 />
+              </td>
+              <td className="py-3 text-right">
+                <Link
+                  href={`/practice/${q.id}`}
+                  className="inline-flex items-center justify-center size-7 rounded text-faint hover:text-primary hover:bg-primary/10 transition-colors"
+                  title="Open in Practice"
+                >
+                  <Code2 className="size-3.5" />
+                </Link>
               </td>
             </tr>
           ))}
