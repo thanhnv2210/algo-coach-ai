@@ -16,12 +16,12 @@ export function ComplexityTable({ rows }: { rows: ComplexityRow[] }) {
             <tr key={row.operation} className="border-b border-border/50 last:border-0">
               <td className="py-2 pr-6 text-foreground">{row.operation}</td>
               <td className="py-2 pr-6">
-                <span className="font-mono text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                <span className="font-mono text-sm bg-primary/10 text-primary px-1.5 py-0.5 rounded">
                   {row.time}
                 </span>
               </td>
               <td className="py-2">
-                <span className="font-mono text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
+                <span className="font-mono text-sm bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
                   {row.space}
                 </span>
               </td>

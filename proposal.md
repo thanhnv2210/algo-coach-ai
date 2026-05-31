@@ -11,7 +11,7 @@ A personal learning platform for tracking algorithm practice, identifying weak a
 | Layer | Decision |
 |---|---|
 | Framework | Next.js 16 — App Router + Turbopack, port 3015 |
-| Styling | TailwindCSS v4 + shadcn/ui + lucide-react |
+| Styling | TailwindCSS v4 + `tw-animate-css` + lucide-react |
 | Database | PostgreSQL (local :54320 / Neon prod) |
 | ORM | Drizzle ORM with `postgres` driver |
 | Auth | NextAuth v5 — single seeded user, no login UI for MVP |
@@ -326,8 +326,9 @@ algo-coach-ai/
 
 ## Theme & Styling
 
-- **Dark mode default** — `ThemeProvider` using `next-themes`. localStorage key: `algo-coach-ai:theme`. Defaults to `dark`.
-- **FOUC prevention** — `next-themes` handles via `suppressHydrationWarning` on `<html>`.
+- **Dark mode default** — custom `ThemeProvider` (no `next-themes`). localStorage key: `algo-coach-ai:theme`. Defaults to `dark`.
+- **FOUC prevention** — inline script in `app/layout.tsx` reads both `algo-coach-ai:theme` and `algo-coach-ai:font-size` before first paint. Sets `.dark` class and `data-font-size` attribute on `<html>` synchronously.
+- **Font size strategy** — user-controlled via `data-font-size` attribute on `<html>`. S / M / L toggle in sidebar footer. Persisted to `algo-coach-ai:font-size`. Sizes: `small: 14px` / `default: 18px` / `large: 26px`. All Tailwind rem utilities scale automatically. Content badges (complexity, patterns) use `text-sm` so they scale visibly at all levels.
 - **Semantic tokens only** — `bg-background`, `text-foreground`, `bg-card`, `border-border`. No hardcoded colors.
 - **Accent color** — yellow (`#eab308` / Tailwind `yellow-500`). Signals "focus" and "highlight". Differentiates from teal (communication-ai-assistant), indigo (career-growth-copilot), and emerald (job-evolution).
 - **Fonts** — Geist Sans + Geist Mono.
@@ -373,7 +374,7 @@ NEXTAUTH_URL=http://localhost:3015
 
 Files live in the app repo under `docs/adr/` and `docs/pdr/`. Each record is also registered in the ArchDoc `index.json`.
 
-### Planned ADRs
+### Written ADRs
 
 | ID | Title | Key decision |
 |---|---|---|
@@ -382,12 +383,12 @@ Files live in the app repo under `docs/adr/` and `docs/pdr/`. Each record is als
 | ADR-003 | pgSchema Namespace Isolation | All tables under `pgSchema('algo_coach')` to avoid collisions on shared local Postgres |
 | ADR-004 | Vercel AI SDK + Claude Sonnet 4.6 | `generateObject` with Zod schema for typed structured output; OpenAI as fallback |
 
-### Planned PDRs
+### Written PDRs
 
 | ID | Title | Key decision |
 |---|---|---|
 | PDR-001 | Product Vision — Personal Algorithm Interview Prep | Focus: learning patterns + AI coaching, not a LeetCode clone |
-| PDR-002 | MVP Scope — Seed Data + Working AI, No Auth | Phase 1 ships UI + Claude coach with seeded data; auth deferred to Phase 2 |
+| PDR-002 | MVP Scope — Static Theory First, DB Second | Phase 1 ships static theory pages (no DB); Phase 2 adds DB + questions + AI |
 
 ---
 
@@ -539,18 +540,19 @@ algo-coach-status() {
 
 ## Development Phases
 
-### Phase 1 — Static Theory Foundation (first milestone)
-- [ ] Write ADR-001 through ADR-004 + PDR-001 + PDR-002 in `docs/adr/` and `docs/pdr/`
-- [ ] Scaffold: Next.js 16 + TailwindCSS v4 + shadcn/ui + pnpm, port 3015
-- [ ] `lib/content/types.ts` — `TopicContent` interface
-- [ ] `lib/content/topics/*.ts` — theory content for all 13 topics (key ideas, complexity, patterns, code example)
-- [ ] `lib/content/index.ts` — `getAllTopics()` + `getTopicBySlug()` helpers
-- [ ] `components/topics/theory/` — `ComplexityTable`, `PatternChips`, `CodeBlock`, `KeyIdeasList`, `RelatedTopics`
-- [ ] `/topics` page — roadmap grid (topic cards link to `/topics/[slug]`)
-- [ ] `/topics/[slug]` page — static theory detail (no DB, no API)
-- [ ] Theme: dark default, yellow accent (`#eab308`), `next-themes`
-- [ ] Register in workspace: `workspace-app-registry.md`, `portfolio/data/workspace.ts`, `index.json`, `~/.zshrc`
-- [ ] favicon: BST tree node SVG at `app/icon.svg`
+### Phase 1 — Static Theory Foundation ✓ complete
+- [x] Write ADR-001 through ADR-004 + PDR-001 + PDR-002 in `docs/adr/` and `docs/pdr/`
+- [x] Scaffold: Next.js 16 + TailwindCSS v4 + `tw-animate-css` + pnpm, port 3015
+- [x] `lib/content/types.ts` — `TopicContent` interface
+- [x] `lib/content/topics/*.ts` — theory content for all 13 topics (key ideas, complexity, patterns, code example)
+- [x] `lib/content/index.ts` — `getAllTopics()` + `getTopicBySlug()` helpers
+- [x] `components/topics/theory/` — `ComplexityTable`, `PatternChips`, `CodeBlock`, `KeyIdeasList`, `RelatedTopics`
+- [x] `/topics` page — roadmap grid (topic cards link to `/topics/[slug]`)
+- [x] `/topics/[slug]` page — static theory detail with `generateStaticParams()` (no DB, no API)
+- [x] Theme: custom `ThemeProvider`, dark default, yellow accent (`#eab308`), FOUC prevention inline script
+- [x] Font size strategy: `data-font-size` on `<html>`, S/M/L toggle in sidebar, `14px / 18px / 22px`
+- [x] Register in workspace: `workspace-app-registry.md`, `portfolio/data/workspace.ts`, `index.json`, `~/.zshrc`
+- [x] favicon: BST tree node SVG at `app/icon.svg`
 
 ### Phase 2 — Full MVP (DB + Questions + Dashboard)
 - [ ] Drizzle schema: `topics`, `questions`, `progress` under `pgSchema('algo_coach')`

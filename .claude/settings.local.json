@@ -5,7 +5,8 @@
       "Bash(grep -r '\"\"dev\"\"' /Users/ThanhNguyen/AI_WS/english-learning-app/package.json)",
       "Bash(pnpm install:*)",
       "Bash(pnpm build:*)",
-      "Bash(source /Users/ThanhNguyen/.zshrc)"
+      "Bash(source /Users/ThanhNguyen/.zshrc)",
+      "WebFetch(domain:localhost)"
     ]
   }
 }
