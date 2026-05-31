@@ -28,11 +28,12 @@ A personal learning platform for tracking algorithm practice, identifying weak a
 ## Pages / Routes
 
 ```
-/              → Dashboard — stats cards, streak, AI recommendations panel
-/topics        → Learning Roadmap — topic grid with progress bars
-/questions     → Question Library — filterable table with status tracking
-/ai-coach      → AI Coach — learning plan generator + weakness analysis
-/profile       → Profile — summary and progress overview
+/                   → Dashboard — stats cards, streak, AI recommendations panel
+/topics             → Learning Roadmap — topic grid with progress bars
+/topics/[slug]      → Topic Detail — static theory content (first milestone)
+/questions          → Question Library — filterable table with status tracking
+/ai-coach           → AI Coach — learning plan generator + weakness analysis
+/profile            → Profile — summary and progress overview
 ```
 
 ---
@@ -72,6 +73,103 @@ All tables under `pgSchema('algo_coach')`.
 | confidence_level | integer | 1–5, user-set |
 | last_reviewed | timestamp | |
 | completion_percentage | numeric | computed field |
+
+---
+
+## Static Theory Content
+
+`/topics/[slug]` is a **static page** — no DB, no API. Content lives in `lib/content/topics/` as TypeScript files, one per topic.
+
+### Content shape per topic
+
+```ts
+// lib/content/topics/arrays.ts
+export const topic: TopicContent = {
+  slug: "arrays",
+  name: "Arrays",
+  category: "fundamentals",
+  description: "...",
+  keyIdeas: [
+    "Zero-indexed contiguous memory",
+    "Random access in O(1) by index",
+    "Insertion/deletion at arbitrary position is O(n)",
+  ],
+  complexity: [
+    { operation: "Access",    time: "O(1)",  space: "O(1)" },
+    { operation: "Search",    time: "O(n)",  space: "O(1)" },
+    { operation: "Insert",    time: "O(n)",  space: "O(1)" },
+    { operation: "Delete",    time: "O(n)",  space: "O(1)" },
+  ],
+  patterns: [
+    { name: "Two Pointers",   description: "Shrink the window from both ends" },
+    { name: "Sliding Window", description: "Track a subarray of fixed or variable size" },
+    { name: "Prefix Sum",     description: "Precompute cumulative sums for range queries" },
+  ],
+  codeExample: {
+    language: "python",
+    label: "Two-pointer reverse in-place",
+    code: `def reverse(arr):
+    left, right = 0, len(arr) - 1
+    while left < right:
+        arr[left], arr[right] = arr[right], arr[left]
+        left += 1
+        right -= 1`,
+  },
+  tips: "Think of arrays as the backbone of most other data structures.",
+  relatedSlugs: ["strings", "sliding-window"],
+}
+```
+
+### `TopicContent` type (`lib/content/types.ts`)
+
+```ts
+interface ComplexityRow { operation: string; time: string; space: string }
+interface Pattern       { name: string; description: string }
+interface CodeExample   { language: string; label: string; code: string }
+
+export interface TopicContent {
+  slug:         string
+  name:         string
+  category:     "fundamentals" | "advanced" | "graphs_trees"
+  description:  string
+  keyIdeas:     string[]
+  complexity:   ComplexityRow[]
+  patterns:     Pattern[]
+  codeExample:  CodeExample
+  tips?:        string
+  relatedSlugs: string[]
+}
+```
+
+### `/topics/[slug]` layout
+
+```
+┌──────────────────────────────────────────────────────┐
+│  ← Back to Topics          Arrays                    │
+├──────────────────────────────────────────────────────┤
+│  Description paragraph                               │
+│                                                      │
+│  Key Ideas          Complexity Table                 │
+│  • Zero-indexed     Op      Time   Space             │
+│  • O(1) access      Access  O(1)   O(1)              │
+│  • O(n) insert      Search  O(n)   O(1)              │
+│                                                      │
+│  Common Patterns                                     │
+│  [Two Pointers] [Sliding Window] [Prefix Sum]        │
+│                                                      │
+│  Code Example — Two-pointer reverse                  │
+│  ┌─────────────────────────────────────────────┐    │
+│  │  def reverse(arr): ...                       │    │
+│  └─────────────────────────────────────────────┘    │
+│                                                      │
+│  Tips                                                │
+│  "Think of arrays as the backbone..."               │
+│                                                      │
+│  Related Topics:  [Strings]  [Sliding Window]        │
+└──────────────────────────────────────────────────────┘
+```
+
+All 13 topics ship with content before any DB work begins.
 
 ---
 
@@ -137,6 +235,7 @@ algo-coach-ai/
       page.tsx                # Dashboard — redirect or inline
     page.tsx                  # Dashboard — stats + AI panel
     topics/page.tsx
+    topics/[slug]/page.tsx
     questions/page.tsx
     ai-coach/page.tsx
     profile/page.tsx
@@ -157,8 +256,14 @@ algo-coach-ai/
       streak-widget.tsx       # Daily streak display
       ai-recommendation-panel.tsx
     topics/
-      topic-card.tsx          # Name + progress bar + confidence stars
+      topic-card.tsx          # Name + progress bar + confidence stars (links to /topics/[slug])
       roadmap-grid.tsx
+      theory/
+        complexity-table.tsx  # Big O table for a topic
+        pattern-chips.tsx     # Pattern name + description pills
+        code-block.tsx        # Syntax-highlighted code example
+        key-ideas-list.tsx    # Bullet list of key concepts
+        related-topics.tsx    # Chips linking to sibling /topics/[slug] pages
     questions/
       question-table.tsx      # Sortable/filterable table
       status-badge.tsx        # Color-coded pill
@@ -174,6 +279,23 @@ algo-coach-ai/
     db/
       index.ts                # Drizzle client singleton
       schema.ts               # All table definitions
+    content/
+      types.ts                # TopicContent, ComplexityRow, Pattern, CodeExample interfaces
+      topics/
+        arrays.ts
+        strings.ts
+        hash-map.ts
+        sliding-window.ts
+        stack.ts
+        queue.ts
+        linked-list.ts
+        tree.ts
+        graph.ts
+        heap.ts
+        binary-search.ts
+        backtracking.ts
+        dynamic-programming.ts
+      index.ts                # getAllTopics(), getTopicBySlug(slug) helpers
     utils/
       cn.ts                   # clsx + tailwind-merge
   services/
@@ -417,36 +539,45 @@ algo-coach-status() {
 
 ## Development Phases
 
-### Phase 1 — MVP
+### Phase 1 — Static Theory Foundation (first milestone)
 - [ ] Write ADR-001 through ADR-004 + PDR-001 + PDR-002 in `docs/adr/` and `docs/pdr/`
 - [ ] Scaffold: Next.js 16 + TailwindCSS v4 + shadcn/ui + pnpm, port 3015
+- [ ] `lib/content/types.ts` — `TopicContent` interface
+- [ ] `lib/content/topics/*.ts` — theory content for all 13 topics (key ideas, complexity, patterns, code example)
+- [ ] `lib/content/index.ts` — `getAllTopics()` + `getTopicBySlug()` helpers
+- [ ] `components/topics/theory/` — `ComplexityTable`, `PatternChips`, `CodeBlock`, `KeyIdeasList`, `RelatedTopics`
+- [ ] `/topics` page — roadmap grid (topic cards link to `/topics/[slug]`)
+- [ ] `/topics/[slug]` page — static theory detail (no DB, no API)
+- [ ] Theme: dark default, yellow accent (`#eab308`), `next-themes`
+- [ ] Register in workspace: `workspace-app-registry.md`, `portfolio/data/workspace.ts`, `index.json`, `~/.zshrc`
+- [ ] favicon: BST tree node SVG at `app/icon.svg`
+
+### Phase 2 — Full MVP (DB + Questions + Dashboard)
 - [ ] Drizzle schema: `topics`, `questions`, `progress` under `pgSchema('algo_coach')`
 - [ ] `scripts/seed.ts` — 13 topics + 30 curated questions
 - [ ] `db:generate` + `db:migrate` — run migrations against local Postgres
 - [ ] API routes: `GET /api/topics`, `GET /api/questions`, `GET /api/dashboard`
 - [ ] Dashboard page: stats cards + Recharts progress chart + AI panel
-- [ ] Topics page: roadmap grid with progress bars
 - [ ] Questions page: filterable table + status badge update
 - [ ] `PATCH /api/questions/[id]/status` — persists to DB
 - [ ] AI Coach page: `generateObject` call → Claude weekly plan
 - [ ] `lib/ai/index.ts` — Claude Sonnet 4.6 primary, OpenAI fallback
-- [ ] Theme: dark default, yellow accent (`#eab308`), `next-themes`
-- [ ] Register in workspace: `workspace-app-registry.md`, `portfolio/data/workspace.ts`, `index.json`, `~/.zshrc`
+- [ ] Wire `/topics/[slug]` related questions section to DB (replaces static placeholder)
 
-### Phase 2 — Auth + Progress Tracking
+### Phase 3 — Auth + Progress Tracking
 - [ ] NextAuth v5 — single seeded user, no login UI
 - [ ] Per-user progress isolation in DB
 - [ ] `progress` table auto-updated on question status change
 - [ ] Dashboard aggregations from real DB queries
 - [ ] AI insights: `POST /api/ai/insights` — weakness detection
 
-### Phase 3 — Personalization
+### Phase 4 — Personalization
 - [ ] Spaced repetition: auto-flag questions as `review_needed` after N days
 - [ ] AI-generated weekly learning plans saved to DB
 - [ ] Confidence level self-rating on topic cards
 - [ ] Streak tracking with daily activity log
 
-### Phase 4 — Coding Playground
+### Phase 5 — Coding Playground
 - [ ] Embedded code editor (Monaco Editor)
 - [ ] Code execution (Judge0 API)
 - [ ] AI solution review via Claude tool use
