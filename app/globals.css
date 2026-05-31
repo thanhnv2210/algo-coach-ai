@@ -59,4 +59,11 @@
   --font-mono: var(--font-geist-mono);
 }
 
-html { font-size: 15px; }
+/* ── Font size strategy ─────────────────────────────────────────────────────
+   Controlled via data-font-size attribute on <html>.
+   Persisted to localStorage under algo-coach-ai:font-size.
+   ─────────────────────────────────────────────────────────────────────────── */
+html                          { font-size: 18px; }
+html[data-font-size="small"]  { font-size: 14px; }
+html[data-font-size="default"] { font-size: 18px; }
+html[data-font-size="large"]  { font-size: 22px; }

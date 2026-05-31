@@ -11,6 +11,13 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils/cn"
 import { ThemeToggle } from "@/components/nav/theme-toggle"
+import { useTheme, type FontSize } from "@/components/theme-provider"
+
+const FONT_SIZES: { value: FontSize; label: string }[] = [
+  { value: "small",   label: "S" },
+  { value: "default", label: "M" },
+  { value: "large",   label: "L" },
+]
 
 const navItems = [
   { href: "/topics",    label: "Topics",     icon: BookOpen,        phase: 1 },
@@ -22,6 +29,7 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const { fontSize, setFontSize } = useTheme()
 
   return (
     <aside className="w-56 shrink-0 border-r border-border bg-card flex flex-col h-screen sticky top-0">
@@ -80,9 +88,30 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-border flex items-center justify-between">
-        <span className="text-xs text-faint">AlgoCoach AI</span>
-        <ThemeToggle />
+      <div className="px-4 py-3 border-t border-border space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-faint">Size</span>
+          <div className="flex gap-1 ml-auto">
+            {FONT_SIZES.map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => setFontSize(value)}
+                className={cn(
+                  "w-6 h-6 rounded text-xs font-medium transition-colors",
+                  fontSize === value
+                    ? "bg-primary/20 text-primary"
+                    : "text-faint hover:text-foreground hover:bg-subtle"
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-faint">AlgoCoach AI</span>
+          <ThemeToggle />
+        </div>
       </div>
     </aside>
   )

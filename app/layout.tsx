@@ -21,7 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('algo-coach-ai:theme');if(t!=='light')document.documentElement.classList.add('dark')}catch(e){document.documentElement.classList.add('dark')}})()`,
+            __html: `(function(){try{var t=localStorage.getItem('algo-coach-ai:theme');if(t!=='light')document.documentElement.classList.add('dark');var s=localStorage.getItem('algo-coach-ai:font-size');document.documentElement.setAttribute('data-font-size',s==='small'||s==='large'?s:'default')}catch(e){document.documentElement.classList.add('dark');document.documentElement.setAttribute('data-font-size','default')}})()`,
           }}
         />
       </head>
