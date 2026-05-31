@@ -2,6 +2,7 @@ import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 import type { TopicContent } from "@/lib/content/types"
 import { cn } from "@/lib/utils/cn"
+import { ConfidenceStars } from "./confidence-stars"
 
 const categoryLabel: Record<TopicContent["category"], string> = {
   fundamentals:  "Fundamentals",
@@ -15,7 +16,23 @@ const categoryColor: Record<TopicContent["category"], string> = {
   graphs_trees: "bg-green-500/10 text-green-500",
 }
 
-export function TopicCard({ topic }: { topic: TopicContent }) {
+type TopicProgress = {
+  solvedCount: number
+  totalCount: number
+  confidenceLevel: number
+}
+
+export function TopicCard({
+  topic,
+  progress,
+}: {
+  topic: TopicContent
+  progress?: TopicProgress
+}) {
+  const pct = progress && progress.totalCount > 0
+    ? Math.round((progress.solvedCount / progress.totalCount) * 100)
+    : 0
+
   return (
     <Link
       href={`/topics/${topic.slug}`}
@@ -37,11 +54,29 @@ export function TopicCard({ topic }: { topic: TopicContent }) {
         {topic.description}
       </p>
 
-      <div className="ml-7">
+      <div className="ml-7 flex items-center justify-between gap-2">
         <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full", categoryColor[topic.category])}>
           {categoryLabel[topic.category]}
         </span>
+
+        {progress && (
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground">
+              {progress.solvedCount}/{progress.totalCount}
+            </span>
+            <ConfidenceStars slug={topic.slug} initial={progress.confidenceLevel} />
+          </div>
+        )}
       </div>
+
+      {progress && progress.totalCount > 0 && (
+        <div className="ml-7 h-1 rounded-full bg-subtle overflow-hidden">
+          <div
+            className="h-full rounded-full bg-primary transition-all"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      )}
     </Link>
   )
 }

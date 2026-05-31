@@ -1,6 +1,6 @@
 import postgres from "postgres"
 import { drizzle } from "drizzle-orm/postgres-js"
-import { topics, questions } from "../lib/db/schema"
+import { topics, questions, progress } from "../lib/db/schema"
 import { getAllTopics } from "../lib/content"
 
 async function main() {
@@ -11,6 +11,7 @@ const db = drizzle(client)
 
 const contentTopics = getAllTopics()
 await db.delete(questions)
+await db.delete(progress)
 await db.delete(topics)
 
 await db.insert(topics).values(
@@ -84,6 +85,13 @@ await db.insert(questions).values([
   { topicSlug: "dynamic-programming", title: "Coin Change", difficulty: "medium", link: "https://leetcode.com/problems/coin-change/", notes: "Bottom-up DP, dp[i] = min coins for amount i" },
 ])
 console.log("Seeded 30 questions.")
+
+// ─── Seed Progress (one row per topic, all zeroed) ────────────────────────────
+
+await db.insert(progress).values(
+  contentTopics.map((t) => ({ topicSlug: t.slug, solvedCount: 0, totalCount: 0 }))
+)
+console.log(`Seeded ${contentTopics.length} progress rows.`)
 await client.end()
 }
 

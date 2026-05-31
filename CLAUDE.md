@@ -71,7 +71,6 @@ pnpm db:reset            # drop and recreate schema
 - **Accent color** — yellow `#eab308` (Tailwind `yellow-500`)
 - **Favicon** — `app/icon.svg` — BST branching tree node (root circle + two child nodes, directed edges)
 - **Theme** — dark default via `next-themes`; semantic tokens only (`bg-background`, `text-foreground`, `bg-card`, `border-border`)
-- **NextAuth cookie** — `algo-coach-ai.session-token` (unique name required for localhost cookie isolation)
 - **localStorage prefix** — `algo-coach-ai:`
 
 ## MVP Pages

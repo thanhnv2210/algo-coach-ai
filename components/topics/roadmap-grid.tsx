@@ -1,4 +1,5 @@
 import type { TopicContent } from "@/lib/content/types"
+import type { Progress } from "@/lib/db/schema"
 import { TopicCard } from "@/components/topics/topic-card"
 
 const CATEGORIES: { key: TopicContent["category"]; label: string }[] = [
@@ -7,7 +8,13 @@ const CATEGORIES: { key: TopicContent["category"]; label: string }[] = [
   { key: "advanced",      label: "Advanced" },
 ]
 
-export function RoadmapGrid({ topics }: { topics: TopicContent[] }) {
+export function RoadmapGrid({
+  topics,
+  progressMap,
+}: {
+  topics: TopicContent[]
+  progressMap?: Record<string, Progress>
+}) {
   return (
     <div className="space-y-8">
       {CATEGORIES.map(({ key, label }) => {
@@ -20,7 +27,11 @@ export function RoadmapGrid({ topics }: { topics: TopicContent[] }) {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
               {group.map((topic) => (
-                <TopicCard key={topic.slug} topic={topic} />
+                <TopicCard
+                  key={topic.slug}
+                  topic={topic}
+                  progress={progressMap?.[topic.slug]}
+                />
               ))}
             </div>
           </section>

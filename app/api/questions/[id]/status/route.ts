@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { updateQuestionStatus } from "@/services/question.service"
+import { upsertProgress } from "@/services/progress.service"
 import type { QuestionStatus } from "@/lib/db/schema"
 
 const VALID_STATUSES: QuestionStatus[] = [
@@ -24,6 +25,8 @@ export async function PATCH(
 
   const updated = await updateQuestionStatus(id, status)
   if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 })
+
+  await upsertProgress(updated.topicSlug)
 
   return NextResponse.json(updated)
 }

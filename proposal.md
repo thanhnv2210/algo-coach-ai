@@ -14,8 +14,8 @@ A personal learning platform for tracking algorithm practice, identifying weak a
 | Styling | TailwindCSS v4 + `tw-animate-css` + lucide-react |
 | Database | PostgreSQL (local :54320 / Neon prod) |
 | ORM | Drizzle ORM with `postgres` driver |
-| Auth | NextAuth v5 — single seeded user, no login UI for MVP |
-| AI | Vercel AI SDK + `@ai-sdk/anthropic` (Claude Sonnet 4.6, primary) + `@ai-sdk/openai` (fallback) |
+| Auth | None — single-user personal tool (PDR-003) |
+| AI | Vercel AI SDK + `@ai-sdk/anthropic` (Claude Sonnet 4.6) |
 | Validation | Zod |
 | Charts | Recharts |
 | State | Zustand |
@@ -213,10 +213,8 @@ const RecommendationSchema = z.object({
 **AI client (`lib/ai/index.ts`):**
 ```ts
 import { anthropic } from "@ai-sdk/anthropic"
-import { openai } from "@ai-sdk/openai"
 
 export const defaultModel = anthropic(process.env.AI_MODEL ?? "claude-sonnet-4-6")
-export const fallbackModel = openai("gpt-4o-mini")
 ```
 
 - API key (`ANTHROPIC_API_KEY`) is server-side only — Next.js route handler calls Claude directly
@@ -320,7 +318,6 @@ algo-coach-ai/
 | Favicon concept | BST branching tree node — root circle at top, two child nodes below, connected by directed edges |
 | Favicon path | `app/icon.svg` (Next.js App Router auto-injection) |
 | localStorage prefix | `algo-coach-ai:` |
-| NextAuth cookie name | `algo-coach-ai.session-token` (required for browser cookie isolation across localhost apps) |
 
 ---
 
@@ -360,12 +357,9 @@ algo-coach-ai/
 ## Environment Variables
 
 ```
-ANTHROPIC_API_KEY=                                                      # Claude — server-side only
-OPENAI_API_KEY=                                                         # Fallback — optional
-AI_MODEL=claude-sonnet-4-6                                              # Override model if needed
-DATABASE_URL=postgresql://ThanhNguyen@localhost:54320/algo_coach        # local dev
-AUTH_SECRET=                                                            # NextAuth secret
-NEXTAUTH_URL=http://localhost:3015
+ANTHROPIC_API_KEY=         # Claude — server-side only
+AI_MODEL=claude-sonnet-4-6 # Override model if needed
+DATABASE_URL=postgresql://ThanhNguyen@localhost:5432/algo_coach  # local dev
 ```
 
 ---
@@ -389,6 +383,7 @@ Files live in the app repo under `docs/adr/` and `docs/pdr/`. Each record is als
 |---|---|---|
 | PDR-001 | Product Vision — Personal Algorithm Interview Prep | Focus: learning patterns + AI coaching, not a LeetCode clone |
 | PDR-002 | MVP Scope — Static Theory First, DB Second | Phase 1 ships static theory pages (no DB); Phase 2 adds DB + questions + AI |
+| PDR-003 | Skip NextAuth for Single-User Personal Tool | No auth layer — single user implicitly the developer; NextAuth adds zero benefit |
 
 ---
 
@@ -550,28 +545,28 @@ algo-coach-status() {
 - [x] `/topics` page — roadmap grid (topic cards link to `/topics/[slug]`)
 - [x] `/topics/[slug]` page — static theory detail with `generateStaticParams()` (no DB, no API)
 - [x] Theme: custom `ThemeProvider`, dark default, yellow accent (`#eab308`), FOUC prevention inline script
-- [x] Font size strategy: `data-font-size` on `<html>`, S/M/L toggle in sidebar, `14px / 18px / 22px`
+- [x] Font size strategy: `data-font-size` on `<html>`, S/M/L toggle in sidebar, `14px / 18px / 26px`
 - [x] Register in workspace: `workspace-app-registry.md`, `portfolio/data/workspace.ts`, `index.json`, `~/.zshrc`
 - [x] favicon: BST tree node SVG at `app/icon.svg`
 
-### Phase 2 — Full MVP (DB + Questions + Dashboard)
-- [ ] Drizzle schema: `topics`, `questions`, `progress` under `pgSchema('algo_coach')`
-- [ ] `scripts/seed.ts` — 13 topics + 30 curated questions
-- [ ] `db:generate` + `db:migrate` — run migrations against local Postgres
-- [ ] API routes: `GET /api/topics`, `GET /api/questions`, `GET /api/dashboard`
-- [ ] Dashboard page: stats cards + Recharts progress chart + AI panel
-- [ ] Questions page: filterable table + status badge update
-- [ ] `PATCH /api/questions/[id]/status` — persists to DB
-- [ ] AI Coach page: `generateObject` call → Claude weekly plan
-- [ ] `lib/ai/index.ts` — Claude Sonnet 4.6 primary, OpenAI fallback
-- [ ] Wire `/topics/[slug]` related questions section to DB (replaces static placeholder)
+### Phase 2 — Full MVP (DB + Questions + Dashboard) ✓ complete
+- [x] Drizzle schema: `topics`, `questions`, `progress` under `pgSchema('algo_coach')`
+- [x] `scripts/seed.ts` — 13 topics + 30 curated questions + 13 progress rows
+- [x] `db:generate` + `db:migrate` — run migrations against local Postgres
+- [x] API routes: `GET /api/questions`, `GET /api/dashboard`, `PATCH /api/questions/[id]/status`
+- [x] Dashboard page: stats cards + Recharts progress chart + AI recommendations panel
+- [x] Questions page: filterable table (topic, difficulty, status) + optimistic status updates
+- [x] AI Coach page: `generateObject` call → Claude weekly plan (weeklyPlan, weakAreas, nextMilestone, encouragement)
+- [x] `lib/ai/index.ts` — Claude Sonnet 4.6 via `@ai-sdk/anthropic`
+- [x] Wire `/topics/[slug]` related questions section to DB (replaces static placeholder)
 
-### Phase 3 — Auth + Progress Tracking
-- [ ] NextAuth v5 — single seeded user, no login UI
-- [ ] Per-user progress isolation in DB
-- [ ] `progress` table auto-updated on question status change
-- [ ] Dashboard aggregations from real DB queries
-- [ ] AI insights: `POST /api/ai/insights` — weakness detection
+### Phase 3 — Progress Tracking + AI Insights ✓ complete
+- [x] Skip NextAuth — single-user personal tool, no auth needed (PDR-003)
+- [x] `progress` table auto-updated on every question status change (`upsertProgress`)
+- [x] Confidence rating (1–5 stars) per topic card — stored in `progress.confidence_level`
+- [x] `/topics` page shows progress bars + solved count per topic
+- [x] `POST /api/ai/insights` — AI weakness detection with priority badges, study gaps, action items
+- [x] `/profile` page — overall completion %, per-topic breakdown with stars, InsightsPanel
 
 ### Phase 4 — Personalization
 - [ ] Spaced repetition: auto-flag questions as `review_needed` after N days

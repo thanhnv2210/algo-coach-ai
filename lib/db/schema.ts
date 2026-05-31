@@ -1,4 +1,4 @@
-import { integer, pgSchema, text, timestamp, uuid } from "drizzle-orm/pg-core"
+import { integer, numeric, pgSchema, text, timestamp, uuid } from "drizzle-orm/pg-core"
 
 // All tables live in the "algo_coach" schema,
 // isolated from other projects on the shared Postgres instance.
@@ -32,12 +32,30 @@ export const questions = schema.table("questions", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 })
 
+// ─── Progress ─────────────────────────────────────────────────────────────────
+
+export const progress = schema.table("progress", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  topicSlug: text("topic_slug")
+    .notNull()
+    .unique()
+    .references(() => topics.slug, { onDelete: "cascade" }),
+  solvedCount: integer("solved_count").notNull().default(0),
+  totalCount: integer("total_count").notNull().default(0),
+  confidenceLevel: integer("confidence_level").notNull().default(0), // 0 = unrated, 1–5
+  completionPercentage: numeric("completion_percentage").notNull().default("0"),
+  lastReviewed: timestamp("last_reviewed"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+})
+
 // ─── Inferred types ────────────────────────────────────────────────────────────
 
 export type Topic = typeof topics.$inferSelect
 export type NewTopic = typeof topics.$inferInsert
 export type Question = typeof questions.$inferSelect
 export type NewQuestion = typeof questions.$inferInsert
+export type Progress = typeof progress.$inferSelect
+export type NewProgress = typeof progress.$inferInsert
 export type QuestionStatus =
   | "not_started"
   | "learning"
