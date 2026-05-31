@@ -190,12 +190,24 @@ algo-coach-ai/
 
 ---
 
+## Design Identity
+
+| Property | Value |
+|---|---|
+| Accent color | Yellow `#eab308` (Tailwind `yellow-500`) |
+| Favicon concept | BST branching tree node — root circle at top, two child nodes below, connected by directed edges |
+| Favicon path | `app/icon.svg` (Next.js App Router auto-injection) |
+| localStorage prefix | `algo-coach-ai:` |
+| NextAuth cookie name | `algo-coach-ai.session-token` (required for browser cookie isolation across localhost apps) |
+
+---
+
 ## Theme & Styling
 
 - **Dark mode default** — `ThemeProvider` using `next-themes`. localStorage key: `algo-coach-ai:theme`. Defaults to `dark`.
 - **FOUC prevention** — `next-themes` handles via `suppressHydrationWarning` on `<html>`.
 - **Semantic tokens only** — `bg-background`, `text-foreground`, `bg-card`, `border-border`. No hardcoded colors.
-- **Accent color** — emerald (`#10b981` / Tailwind `emerald-500`). Signals "growth" and "learning progress". Differentiates from teal (communication-ai-assistant) and indigo (career-growth-copilot).
+- **Accent color** — yellow (`#eab308` / Tailwind `yellow-500`). Signals "focus" and "highlight". Differentiates from teal (communication-ai-assistant), indigo (career-growth-copilot), and emerald (job-evolution).
 - **Fonts** — Geist Sans + Geist Mono.
 
 ---
@@ -225,11 +237,98 @@ algo-coach-ai/
 ## Environment Variables
 
 ```
-ANTHROPIC_API_KEY=          # Claude — server-side only
-OPENAI_API_KEY=             # Fallback — optional
-AI_MODEL=claude-sonnet-4-6  # Override model if needed
-DATABASE_URL=               # Neon or local postgres connection string
-AUTH_SECRET=                # NextAuth secret
+ANTHROPIC_API_KEY=                                                      # Claude — server-side only
+OPENAI_API_KEY=                                                         # Fallback — optional
+AI_MODEL=claude-sonnet-4-6                                              # Override model if needed
+DATABASE_URL=postgresql://ThanhNguyen@localhost:54320/algo_coach        # local dev
+AUTH_SECRET=                                                            # NextAuth secret
+NEXTAUTH_URL=http://localhost:3015
+```
+
+---
+
+## Workspace Registration
+
+Steps required by the runbook before the app is considered properly set up.
+
+### 1. `workspace-app-registry.md` — Port Map row
+```
+| 3015 | algo-coach-ai | AI_WS/algo-coach-ai | Next.js 16 + TailwindCSS v4 + Drizzle ORM | pnpm dev (alias: algo-coach-start) |
+```
+
+### 2. `workspace-app-registry.md` — Design Reference row
+```
+| algo-coach-ai | Algorithm interview prep platform | BST branching tree node — root + two child nodes, directed edges | Yellow #eab308 | app/icon.svg |
+```
+
+### 3. `portfolio/data/workspace.ts` — New entry
+```ts
+{
+  name: 'algo-coach-ai',
+  path: 'AI_WS/algo-coach-ai',
+  port: 3015,
+  url: 'http://localhost:3015',
+  stack: ['Next.js 16', 'TailwindCSS v4', 'Drizzle ORM'],
+  description: 'AI-powered algorithm interview prep platform — progress tracking, learning roadmap, Claude coaching.',
+  status: 'in-progress',
+  command: 'pnpm dev',
+},
+```
+
+### 4. `architecture-practice/public/docs/index.json` — New tree section
+```json
+{
+  "id": "algo-coach-ai",
+  "label": "AlgoCoach AI",
+  "children": [
+    {
+      "id": "algo-coach-ai-overview",
+      "title": "AlgoCoach AI — Overview",
+      "type": "markdown",
+      "path": "docs/algo-coach-ai/overview.md",
+      "tags": ["algo-coach-ai", "overview", "interview-prep", "ai"],
+      "created": "2026-05-31",
+      "modified": "2026-05-31",
+      "remark": "Algorithm interview prep platform with Claude AI coaching"
+    }
+  ]
+}
+```
+
+### 5. `~/.zshrc` — Shell aliases
+```zsh
+# AlgoCoach AI
+ALGO_COACH_DIR="/Users/ThanhNguyen/AI_WS/algo-coach-ai"
+ALGO_COACH_PID_FILE="/tmp/algo-coach.pid"
+ALGO_COACH_PORT=3015
+
+algo-coach-start() {
+  echo "Starting AlgoCoach AI..."
+  lsof -ti tcp:$ALGO_COACH_PORT | xargs kill -9 2>/dev/null
+  rm -f "$ALGO_COACH_PID_FILE"
+  (cd "$ALGO_COACH_DIR" && pnpm dev:clean > /tmp/algo-coach.log 2>&1 &)
+  echo $! > "$ALGO_COACH_PID_FILE"
+  echo "AlgoCoach AI started (PID $(cat $ALGO_COACH_PID_FILE)) — http://localhost:$ALGO_COACH_PORT"
+  echo "Logs: tail -f /tmp/algo-coach.log"
+}
+
+algo-coach-stop() {
+  echo "Stopping AlgoCoach AI..."
+  lsof -ti tcp:$ALGO_COACH_PORT | xargs kill -9 2>/dev/null && echo "Stopped." || echo "Not running."
+  rm -f "$ALGO_COACH_PID_FILE"
+}
+
+algo-coach-restart() { algo-coach-stop && sleep 1 && algo-coach-start; }
+algo-coach-logs() { tail -f /tmp/algo-coach.log; }
+
+algo-coach-status() {
+  if [[ -f "$ALGO_COACH_PID_FILE" ]] && kill -0 "$(cat $ALGO_COACH_PID_FILE)" 2>/dev/null; then
+    echo "AlgoCoach AI is running (PID $(cat $ALGO_COACH_PID_FILE)) — http://localhost:$ALGO_COACH_PORT"
+  else
+    echo "AlgoCoach AI is not running."
+    rm -f "$ALGO_COACH_PID_FILE"
+  fi
+}
 ```
 
 ---
@@ -248,7 +347,7 @@ AUTH_SECRET=                # NextAuth secret
 - [ ] `PATCH /api/questions/[id]/status` — persists to DB
 - [ ] AI Coach page: `generateObject` call → Claude weekly plan
 - [ ] `lib/ai/index.ts` — Claude Sonnet 4.6 primary, OpenAI fallback
-- [ ] Theme: dark default, emerald accent, `next-themes`
+- [ ] Theme: dark default, yellow accent (`#eab308`), `next-themes`
 
 ### Phase 2 — Auth + Progress Tracking
 - [ ] NextAuth v5 — single seeded user, no login UI

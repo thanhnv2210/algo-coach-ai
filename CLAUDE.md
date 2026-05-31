@@ -8,24 +8,26 @@ AlgoCoach AI is a full-stack personal learning platform for algorithm interview 
 
 ## Architecture
 
+**Template B — Next.js full-stack** (single repo, no separate backend service)
+
 ```
-Next.js (Vercel) → Spring Boot REST API (Render/Fly.io) → PostgreSQL (Neon)
-                                                         → OpenAI API
+Browser → Next.js App Router (port 3015)
+            ├── /app/(dashboard)/* — pages
+            ├── /app/api/*         — route handlers (DB + AI)
+            ├── /services/*        — server-side DB logic (Drizzle)
+            └── /lib/ai/index.ts   — Vercel AI SDK (Claude Sonnet 4.6)
+                                          ↓
+                                   PostgreSQL :54320 (local) / Neon (prod)
 ```
 
-### Frontend (`/frontend`)
-- **Next.js** with TypeScript and Tailwind CSS
-- **shadcn/ui** component library
-- Structure: `app/` (routes), `components/`, `features/` (domain logic), `services/` (API calls), `types/`
-
-### Backend (`/backend`)
-- **Spring Boot** with Java
-- Structure: `controller/`, `service/`, `repository/`, `domain/`, `dto/`, `config/`
-- REST API consumed by the frontend
-
-### Other directories
-- `docs/` — architecture notes, roadmap, API docs
-- `database/` — schema and seed files
+### Key directories
+- `app/` — Next.js App Router pages and API route handlers
+- `components/` — UI components grouped by feature (`dashboard/`, `topics/`, `questions/`, `ai-coach/`, `nav/`, `ui/`)
+- `services/` — server-side only DB query functions (Drizzle), one file per domain
+- `lib/ai/index.ts` — AI client singleton; `defaultModel` = Claude, `fallbackModel` = OpenAI
+- `lib/db/schema.ts` — all Drizzle table definitions under `pgSchema('algo_coach')`
+- `scripts/` — `seed.ts`, `reset-db.ts` (run with `pnpm tsx --env-file=.env scripts/<file>.ts`)
+- `drizzle/` — generated SQL migration files (committed)
 
 ## Domain Model
 
@@ -43,23 +45,27 @@ Next.js (Vercel) → Spring Boot REST API (Render/Fly.io) → PostgreSQL (Neon)
 
 These commands will apply once the project is scaffolded. Update this section as the project is built out.
 
-### Frontend
 ```bash
-cd frontend
-npm install
-npm run dev        # start dev server (localhost:3000)
-npm run build      # production build
-npm run lint       # lint
+pnpm dev:clean           # start dev server (localhost:3015)
+pnpm build               # production build
+pnpm lint                # lint
+pnpm test                # run unit tests (Vitest)
+pnpm test:e2e            # run E2E tests (Playwright)
+
+pnpm db:generate         # generate Drizzle migration from schema changes
+pnpm db:migrate          # apply migrations to local Postgres
+pnpm db:seed             # seed 13 topics + 30 questions
+pnpm db:studio           # open Drizzle Studio (visual DB browser)
+pnpm db:reset            # drop and recreate schema
 ```
 
-### Backend
-```bash
-cd backend
-./mvnw spring-boot:run    # start dev server
-./mvnw test               # run all tests
-./mvnw test -Dtest=ClassName#methodName   # run single test
-./mvnw package            # build JAR
-```
+## Design Identity
+
+- **Accent color** — yellow `#eab308` (Tailwind `yellow-500`)
+- **Favicon** — `app/icon.svg` — BST branching tree node (root circle + two child nodes, directed edges)
+- **Theme** — dark default via `next-themes`; semantic tokens only (`bg-background`, `text-foreground`, `bg-card`, `border-border`)
+- **NextAuth cookie** — `algo-coach-ai.session-token` (unique name required for localhost cookie isolation)
+- **localStorage prefix** — `algo-coach-ai:`
 
 ## MVP Pages
 - `/` — Dashboard with stats, streak, AI recommendations
