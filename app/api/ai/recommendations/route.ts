@@ -3,6 +3,7 @@ import { generateObject } from "ai"
 import { z } from "zod"
 import { defaultModel } from "@/lib/ai"
 import { getDashboardStats } from "@/services/dashboard.service"
+import { saveLatestPlan, getLatestPlan } from "@/services/learning-plan.service"
 
 const RecommendationSchema = z.object({
   weeklyPlan: z.array(
@@ -17,6 +18,12 @@ const RecommendationSchema = z.object({
   nextMilestone: z.string(),
   encouragement: z.string(),
 })
+
+export async function GET() {
+  const plan = await getLatestPlan()
+  if (!plan) return NextResponse.json(null)
+  return NextResponse.json(plan.plan)
+}
 
 export async function POST() {
   const stats = await getDashboardStats()
@@ -41,6 +48,8 @@ ${progressSummary}
 
 Generate a focused 5-day weekly plan targeting weak areas. Keep each day realistic (1-2 topics, 2-3 questions). Be specific and encouraging.`,
   })
+
+  await saveLatestPlan(object)
 
   return NextResponse.json(object)
 }

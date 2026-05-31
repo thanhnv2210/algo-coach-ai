@@ -1,10 +1,14 @@
 import { db } from "@/lib/db"
 import { questions, topics } from "@/lib/db/schema"
 import { sql } from "drizzle-orm"
+import { getStreak } from "@/services/activity.service"
 
 export async function getDashboardStats() {
-  const allQuestions = await db.select().from(questions)
-  const allTopics = await db.select().from(topics).orderBy(topics.order)
+  const [allQuestions, allTopics, streak] = await Promise.all([
+    db.select().from(questions),
+    db.select().from(topics).orderBy(topics.order),
+    getStreak(),
+  ])
 
   const total = allQuestions.length
   const solved = allQuestions.filter((q) => q.status === "solved" || q.status === "mastered").length
@@ -29,12 +33,16 @@ export async function getDashboardStats() {
 
   const topicsCovered = topicProgress.filter((t) => t.solved > 0).length
 
+  const reviewNeeded = allQuestions.filter((q) => q.status === "review_needed").length
+
   return {
     total,
     solved,
     mastered,
     inProgress,
     notStarted,
+    reviewNeeded,
+    streak,
     topicsCovered,
     totalTopics: allTopics.length,
     topicProgress,

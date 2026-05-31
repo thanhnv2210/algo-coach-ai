@@ -15,6 +15,13 @@
       "when": 1780212379332,
       "tag": "0001_next_colossus",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780240118710,
+      "tag": "0002_solid_talos",
+      "breakpoints": true
     }
   ]
 }

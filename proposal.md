@@ -183,7 +183,8 @@ All under `/api/`.
 | GET | `/api/questions` | List questions (filter: topic, difficulty, status) |
 | PATCH | `/api/questions/[id]/status` | Update question status |
 | GET | `/api/dashboard` | Aggregated stats for dashboard |
-| POST | `/api/ai/recommendations` | Generate weekly learning plan via Claude |
+| GET | `/api/ai/recommendations` | Return latest saved learning plan |
+| POST | `/api/ai/recommendations` | Generate + save weekly learning plan via Claude |
 | POST | `/api/ai/insights` | Analyze weaknesses from question history |
 
 MVP serves from static seed data. Phase 2 adds real DB persistence.
@@ -568,11 +569,11 @@ algo-coach-status() {
 - [x] `POST /api/ai/insights` — AI weakness detection with priority badges, study gaps, action items
 - [x] `/profile` page — overall completion %, per-topic breakdown with stars, InsightsPanel
 
-### Phase 4 — Personalization
-- [ ] Spaced repetition: auto-flag questions as `review_needed` after N days
-- [ ] AI-generated weekly learning plans saved to DB
-- [ ] Confidence level self-rating on topic cards
-- [ ] Streak tracking with daily activity log
+### Phase 4 — Personalization ✓ complete
+- [x] Streak tracking — `activity_log` table; `touchActivity()` called on every status change; `getStreak()` in dashboard; streak stat card on dashboard
+- [x] Spaced repetition — `flagStaleQuestions(7)` runs on dashboard load; questions `solved`/`mastered` > 7 days ago → `review_needed`; "Review Due" stat card on dashboard
+- [x] AI-generated weekly learning plans saved to DB — `learning_plans` table; POST saves plan; GET returns latest; AIPanel loads last plan on mount
+- [x] Confidence level self-rating on topic cards (implemented in Phase 3)
 
 ### Phase 5 — Coding Playground
 - [ ] Embedded code editor (Monaco Editor)

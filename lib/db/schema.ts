@@ -1,4 +1,4 @@
-import { integer, numeric, pgSchema, text, timestamp, uuid } from "drizzle-orm/pg-core"
+import { date, integer, jsonb, numeric, pgSchema, text, timestamp, uuid } from "drizzle-orm/pg-core"
 
 // All tables live in the "algo_coach" schema,
 // isolated from other projects on the shared Postgres instance.
@@ -48,6 +48,23 @@ export const progress = schema.table("progress", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 })
 
+// ─── Activity Log ─────────────────────────────────────────────────────────────
+
+export const activityLog = schema.table("activity_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  date: date("date").notNull().unique(),
+  questionsTouched: integer("questions_touched").notNull().default(1),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+})
+
+// ─── Learning Plans ───────────────────────────────────────────────────────────
+
+export const learningPlans = schema.table("learning_plans", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  plan: jsonb("plan").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+})
+
 // ─── Inferred types ────────────────────────────────────────────────────────────
 
 export type Topic = typeof topics.$inferSelect
@@ -62,3 +79,5 @@ export type QuestionStatus =
   | "solved"
   | "review_needed"
   | "mastered"
+export type ActivityLog = typeof activityLog.$inferSelect
+export type LearningPlan = typeof learningPlans.$inferSelect

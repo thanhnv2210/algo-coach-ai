@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { BrainCircuit, Loader2 } from "lucide-react"
 
 type WeeklyDay = {
@@ -21,6 +21,13 @@ export function AIPanel() {
   const [rec, setRec] = useState<Recommendation | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch("/api/ai/recommendations")
+      .then((r) => r.json())
+      .then((data) => { if (data) setRec(data) })
+      .catch(() => {})
+  }, [])
 
   async function generate() {
     setLoading(true)

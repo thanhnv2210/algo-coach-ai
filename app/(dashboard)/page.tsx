@@ -1,4 +1,5 @@
 import { getDashboardStats } from "@/services/dashboard.service"
+import { flagStaleQuestions } from "@/services/question.service"
 import { StatsCard } from "@/components/dashboard/stats-card"
 import { ProgressChart } from "@/components/dashboard/progress-chart"
 import { AIPanel } from "@/components/dashboard/ai-panel"
@@ -6,6 +7,8 @@ import { AIPanel } from "@/components/dashboard/ai-panel"
 export const dynamic = "force-dynamic"
 
 export default async function DashboardPage() {
+  // Run spaced-repetition check on every dashboard load (fast, no-op if nothing stale)
+  await flagStaleQuestions(7)
   const stats = await getDashboardStats()
 
   return (
@@ -18,10 +21,12 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
         <StatsCard label="Solved" value={stats.solved} sub={`of ${stats.total} total`} accent />
         <StatsCard label="Mastered" value={stats.mastered} />
         <StatsCard label="In Progress" value={stats.inProgress} />
+        <StatsCard label="Review Due" value={stats.reviewNeeded} />
+        <StatsCard label="Streak" value={stats.streak} sub={stats.streak === 1 ? "day" : "days"} />
         <StatsCard label="Topics Active" value={`${stats.topicsCovered}/${stats.totalTopics}`} />
       </div>
 
