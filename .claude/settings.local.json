@@ -6,7 +6,12 @@
       "Bash(pnpm install:*)",
       "Bash(pnpm build:*)",
       "Bash(source /Users/ThanhNguyen/.zshrc)",
-      "WebFetch(domain:localhost)"
+      "WebFetch(domain:localhost)",
+      "Bash(pnpm add:*)",
+      "Bash(pg_isready -h localhost -p 5432)",
+      "Bash(pg_isready -h localhost -p 54320)",
+      "Bash(psql:*)",
+      "Bash(pnpm:*)"
     ]
   }
 }
