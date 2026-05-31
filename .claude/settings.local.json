@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r '\"\"dev\"\"' /Users/ThanhNguyen/AI_WS/freelancer-copilot/package.json)",
+      "Bash(grep -r '\"\"dev\"\"' /Users/ThanhNguyen/AI_WS/english-learning-app/package.json)"
+    ]
+  }
+}

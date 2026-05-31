@@ -2,7 +2,7 @@
 
 A personal learning platform for tracking algorithm practice, identifying weak areas, and leveraging AI to accelerate coding interview preparation.
 
-**Portfolio positioning:** Demonstrates full-stack architecture (Next.js + Spring Boot), domain-driven design, and practical AI integration — covering the core hiring signals for Senior Engineer → Solution Architect. Extension path: AI-powered mock interview coach with voice + real-time code evaluation.
+**Portfolio positioning:** Demonstrates full-stack Next.js architecture, domain-driven design, and practical Claude AI integration — covering the core hiring signals for Senior Engineer → Solution Architect. Extension path: AI-powered mock interview coach with voice + real-time code evaluation.
 
 ---
 
@@ -10,18 +10,18 @@ A personal learning platform for tracking algorithm practice, identifying weak a
 
 | Layer | Decision |
 |---|---|
-| Frontend framework | Next.js 15 (App Router) + TypeScript |
-| Styling | Tailwind CSS v4 |
-| Components | shadcn/ui + lucide-react |
-| Charts | Recharts (dashboard progress charts) |
-| Backend | Spring Boot 3 + Java 21 |
-| ORM | Spring Data JPA + Hibernate |
-| Database | PostgreSQL on Neon (free tier) |
-| AI | OpenAI API (`gpt-4o-mini` for cost; upgrade path to `gpt-4o`) |
-| Package manager | pnpm (frontend) / Maven (backend) |
-| Testing | Vitest + @testing-library/react (frontend) / JUnit 5 + Mockito (backend) |
-| Frontend port | 3014 |
-| Backend port | 8014 |
+| Framework | Next.js 16 — App Router + Turbopack, port 3015 |
+| Styling | TailwindCSS v4 + shadcn/ui + lucide-react |
+| Database | PostgreSQL (local :54320 / Neon prod) |
+| ORM | Drizzle ORM with `postgres` driver |
+| Auth | NextAuth v5 — single seeded user, no login UI for MVP |
+| AI | Vercel AI SDK + `@ai-sdk/anthropic` (Claude Sonnet 4.6, primary) + `@ai-sdk/openai` (fallback) |
+| Validation | Zod |
+| Charts | Recharts |
+| State | Zustand |
+| Package Manager | pnpm |
+| Testing | Vitest (unit) + Playwright (E2E) |
+| Hosting | Vercel + Neon |
 
 ---
 
@@ -29,191 +29,163 @@ A personal learning platform for tracking algorithm practice, identifying weak a
 
 ```
 /              → Dashboard — stats cards, streak, AI recommendations panel
-/topics        → Learning Roadmap — topic list with progress bars
+/topics        → Learning Roadmap — topic grid with progress bars
 /questions     → Question Library — filterable table with status tracking
 /ai-coach      → AI Coach — learning plan generator + weakness analysis
-/profile       → Profile — summary, history, export
+/profile       → Profile — summary and progress overview
 ```
 
 ---
 
-## Domain Model
+## Database Schema
 
-### User
-```
-User
-├── id (UUID)
-├── name
-├── email
-└── createdAt
-```
+All tables under `pgSchema('algo_coach')`.
 
-### Topic
-```
-Topic
-├── id (UUID)
-├── name               # "Arrays", "Dynamic Programming", etc.
-├── category           # "Fundamentals" | "Advanced" | "Graphs & Trees"
-├── description
-└── order              # display order in roadmap
-```
+### `topics`
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| name | text | "Arrays", "Dynamic Programming", etc. |
+| category | text | `fundamentals` \| `advanced` \| `graphs_trees` |
+| description | text | |
+| order | integer | display order in roadmap |
+| created_at | timestamp | |
 
-### Question
-```
-Question
-├── id (UUID)
-├── title
-├── difficulty         # EASY | MEDIUM | HARD
-├── topic (FK)
-├── link               # LeetCode URL
-├── notes
-└── status             # NOT_STARTED | LEARNING | SOLVED | REVIEW_NEEDED | MASTERED
-```
+### `questions`
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| topic_id | uuid FK → topics | |
+| title | text | |
+| difficulty | text | `easy` \| `medium` \| `hard` |
+| link | text | LeetCode URL |
+| notes | text | optional hints |
+| status | text | `not_started` \| `learning` \| `solved` \| `review_needed` \| `mastered` |
+| updated_at | timestamp | updated on every status change |
 
-### Progress
-```
-Progress
-├── id (UUID)
-├── user (FK)
-├── topic (FK)
-├── solvedCount
-├── confidenceLevel    # 1–5
-├── lastReviewed
-└── completionPercentage
-```
+### `progress`
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| topic_id | uuid FK → topics | |
+| solved_count | integer | derived from questions |
+| confidence_level | integer | 1–5, user-set |
+| last_reviewed | timestamp | |
+| completion_percentage | numeric | computed field |
 
 ---
 
-## API Design
+## API Routes
 
-All endpoints under `/api/v1`.
+All under `/api/`.
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/topics` | List all topics with progress |
-| GET | `/questions` | List questions (filter: topic, difficulty, status) |
-| PATCH | `/questions/{id}/status` | Update question status |
-| GET | `/dashboard` | Aggregated stats for dashboard |
-| POST | `/ai/recommendations` | Generate AI learning plan from progress snapshot |
-| POST | `/ai/insights` | Analyze weaknesses from question history |
+| GET | `/api/topics` | List all topics with progress |
+| GET | `/api/questions` | List questions (filter: topic, difficulty, status) |
+| PATCH | `/api/questions/[id]/status` | Update question status |
+| GET | `/api/dashboard` | Aggregated stats for dashboard |
+| POST | `/api/ai/recommendations` | Generate weekly learning plan via Claude |
+| POST | `/api/ai/insights` | Analyze weaknesses from question history |
 
-MVP starts with static seed data returned from the backend. Real DB persistence added in Phase 2.
+MVP serves from static seed data. Phase 2 adds real DB persistence.
 
 ---
 
 ## AI Pipeline
 
-### `POST /api/v1/ai/recommendations`
+### `POST /api/ai/recommendations`
 
-**Request:**
-```json
-{
-  "progressSnapshot": [
-    { "topic": "Arrays", "solvedCount": 12, "confidenceLevel": 4 },
-    { "topic": "Dynamic Programming", "solvedCount": 1, "confidenceLevel": 1 }
-  ],
-  "recentlySolved": ["Two Sum", "Valid Parentheses"]
-}
+Uses `generateObject` (Vercel AI SDK) with a Zod schema — Claude returns typed structured data, no JSON parsing needed.
+
+**Zod response schema:**
+```ts
+const RecommendationSchema = z.object({
+  weeklyPlan: z.array(z.object({
+    day: z.string(),
+    topic: z.string(),
+    suggestedQuestions: z.array(z.string()),
+  })),
+  weakAreas: z.array(z.string()),
+  nextMilestone: z.string(),
+  encouragement: z.string(),
+})
 ```
 
-**System prompt contract:** Returns structured JSON — no markdown fences.
+**AI client (`lib/ai/index.ts`):**
+```ts
+import { anthropic } from "@ai-sdk/anthropic"
+import { openai } from "@ai-sdk/openai"
 
-**Response schema:**
-```json
-{
-  "weeklyPlan": [
-    { "day": "Monday", "topic": "Dynamic Programming", "suggestedQuestions": ["Climbing Stairs", "House Robber"] }
-  ],
-  "weakAreas": ["Dynamic Programming", "Graph"],
-  "nextMilestone": "Complete 3 DP problems this week",
-  "encouragement": "You are strong in Arrays — build on that with Sliding Window."
-}
+export const defaultModel = anthropic(process.env.AI_MODEL ?? "claude-sonnet-4-6")
+export const fallbackModel = openai("gpt-4o-mini")
 ```
 
-- Model: `gpt-4o-mini` (structured output mode, `response_format: json_object`)
-- Spring Boot service: `OpenAiService` wraps the OpenAI Java SDK, retries on rate limit (exponential backoff, max 3 attempts)
-- Frontend calls backend — API key never leaves the server
+- API key (`ANTHROPIC_API_KEY`) is server-side only — Next.js route handler calls Claude directly
+- System prompt establishes the JSON contract and coaching persona
+- `generateObject` validates the response against the Zod schema automatically
 
 ---
 
-## Component Plan
+## Project Structure
 
 ```
-frontend/
+algo-coach-ai/
   app/
-    page.tsx                  # Dashboard
+    (dashboard)/
+      layout.tsx              # Sidebar shell + ThemeProvider
+      page.tsx                # Dashboard — redirect or inline
+    page.tsx                  # Dashboard — stats + AI panel
     topics/page.tsx
     questions/page.tsx
     ai-coach/page.tsx
     profile/page.tsx
-    layout.tsx                # Shell: sidebar nav + ThemeProvider
+    api/
+      topics/route.ts
+      questions/[id]/status/route.ts
+      dashboard/route.ts
+      ai/recommendations/route.ts
+      ai/insights/route.ts
+    globals.css
+    layout.tsx                # Root layout — fonts, metadata
   components/
-    layout/
-      Sidebar.tsx             # Nav links + collapse toggle
-      TopBar.tsx              # Page title + user avatar
+    nav/
+      sidebar.tsx             # Nav links + theme toggle
     dashboard/
-      StatsCard.tsx           # Single metric card (solved, streak, etc.)
-      ProgressChart.tsx       # Recharts bar chart — solved by topic
-      StreakWidget.tsx        # Calendar heatmap or streak counter
-      AIRecommendationPanel.tsx  # Renders AI weekly plan
+      stats-card.tsx          # Single metric card
+      progress-chart.tsx      # Recharts bar — solved by topic
+      streak-widget.tsx       # Daily streak display
+      ai-recommendation-panel.tsx
     topics/
-      TopicCard.tsx           # Topic name + progress bar + confidence stars
-      RoadmapGrid.tsx         # Ordered grid of TopicCards
+      topic-card.tsx          # Name + progress bar + confidence stars
+      roadmap-grid.tsx
     questions/
-      QuestionTable.tsx       # Sortable/filterable table
-      StatusBadge.tsx         # Color-coded status pill
-      QuestionFilters.tsx     # Topic + difficulty + status filters
+      question-table.tsx      # Sortable/filterable table
+      status-badge.tsx        # Color-coded pill
+      question-filters.tsx
     ai-coach/
-      PromptPanel.tsx         # "Generate my plan" button + loading state
-      LearningPlanDisplay.tsx # Structured weekly plan output
-      WeaknessChart.tsx       # Visual weak areas breakdown
-    ui/                       # shadcn/ui re-exports
-  features/
-    dashboard/useDashboard.ts      # Fetch + aggregate dashboard data
-    questions/useQuestions.ts      # Fetch, filter, mutate question status
-    ai-coach/useAICoach.ts         # Call /ai/recommendations, manage state
+      generate-plan-button.tsx
+      learning-plan-display.tsx
+      weakness-chart.tsx
+    ui/                       # shadcn/ui components
+    theme-provider.tsx
+  lib/
+    ai/index.ts               # Vercel AI SDK client (Claude primary, OpenAI fallback)
+    db/
+      index.ts                # Drizzle client singleton
+      schema.ts               # All table definitions
+    utils/
+      cn.ts                   # clsx + tailwind-merge
   services/
-    api.ts                    # Axios instance pointing to Spring Boot (NEXT_PUBLIC_API_URL)
-    topics.ts
-    questions.ts
-    ai.ts
-  types/
-    domain.ts                 # Topic, Question, Progress, User interfaces
-    api.ts                    # Request/response DTOs
-```
-
-```
-backend/
-  src/main/java/com/algocoachai/
-    controller/
-      TopicController.java
-      QuestionController.java
-      DashboardController.java
-      AiController.java
-    service/
-      TopicService.java
-      QuestionService.java
-      DashboardService.java
-      OpenAiService.java          # OpenAI API integration
-    repository/
-      TopicRepository.java
-      QuestionRepository.java
-      ProgressRepository.java
-    domain/
-      Topic.java
-      Question.java
-      Progress.java
-      User.java
-      enums/Difficulty.java
-      enums/QuestionStatus.java
-    dto/
-      request/AiRecommendationRequest.java
-      response/DashboardResponse.java
-      response/AiRecommendationResponse.java
-    config/
-      OpenAiConfig.java           # Bean: OpenAI client with API key
-      CorsConfig.java             # Allow frontend origin
-      DataSeeder.java             # CommandLineRunner — seed topics + questions
+    topic.service.ts          # DB queries — topics + progress
+    question.service.ts       # DB queries — questions CRUD
+    dashboard.service.ts      # Aggregated stats
+    ai.service.ts             # generateObject calls, prompt construction
+  scripts/
+    seed.ts                   # Seed 13 topics + 30 curated questions
+    reset-db.ts
+  drizzle/                    # Generated SQL migrations
+  drizzle.config.ts
 ```
 
 ---
@@ -221,10 +193,10 @@ backend/
 ## Theme & Styling
 
 - **Dark mode default** — `ThemeProvider` using `next-themes`. localStorage key: `algo-coach-ai:theme`. Defaults to `dark`.
-- **FOUC prevention** — `next-themes` handles this via `suppressHydrationWarning` on `<html>`.
+- **FOUC prevention** — `next-themes` handles via `suppressHydrationWarning` on `<html>`.
 - **Semantic tokens only** — `bg-background`, `text-foreground`, `bg-card`, `border-border`. No hardcoded colors.
-- **Accent color** — emerald (`#10b981` / Tailwind `emerald-500`). Signals "growth" and "learning progress".
-- **Fonts** — Geist Sans + Geist Mono (Next.js default).
+- **Accent color** — emerald (`#10b981` / Tailwind `emerald-500`). Signals "growth" and "learning progress". Differentiates from teal (communication-ai-assistant) and indigo (career-growth-copilot).
+- **Fonts** — Geist Sans + Geist Mono.
 
 ---
 
@@ -232,69 +204,66 @@ backend/
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ [AlgoCoach AI logo]   [Dashboard] [Topics] [Questions]  │
-│                       [AI Coach]  [Profile]  [Theme ☀]  │
+│ [AlgoCoach AI]                              [Theme ☀]   │
 ├──────────┬──────────────────────────────────────────────┤
 │          │                                              │
-│ Sidebar  │   Page Content                               │
-│ (nav)    │                                              │
-│  ~220px  │   Dashboard:                                 │
-│          │   ┌────┐ ┌────┐ ┌────┐ ┌────┐               │
-│          │   │Stats│ │Stats│ │Stats│ │Streak│           │
-│          │   └────┘ └────┘ └────┘ └────┘               │
-│          │   ┌───────────────┐ ┌─────────────────┐     │
-│          │   │  Progress     │ │  AI             │     │
-│          │   │  Chart        │ │  Recommendations│     │
-│          │   └───────────────┘ └─────────────────┘     │
-│          │                                              │
+│ Sidebar  │   Dashboard:                                 │
+│  ~220px  │   ┌────────┐ ┌────────┐ ┌────────┐          │
+│          │   │ Solved │ │ Streak │ │  Top   │          │
+│ Dashboard│   │  142   │ │  7 day │ │ Topic  │          │
+│ Topics   │   └────────┘ └────────┘ └────────┘          │
+│ Questions│                                              │
+│ AI Coach │   ┌─────────────────┐ ┌──────────────────┐  │
+│ Profile  │   │ Progress Chart  │ │ AI Weekly Plan   │  │
+│          │   │ (Recharts bar)  │ │ (Claude output)  │  │
+│          │   └─────────────────┘ └──────────────────┘  │
 └──────────┴──────────────────────────────────────────────┘
 ```
 
 ---
 
-## Storage
+## Environment Variables
 
-- **Phase 1 (MVP):** Static seed data in `DataSeeder.java` — no real DB writes. All question status changes held in React state (resets on refresh).
-- **Phase 2:** Full PostgreSQL persistence via JPA. Question status PATCH endpoint persists to DB. Progress table populated on each status update.
-- **Phase 3:** User authentication (Google OAuth via Spring Security). Per-user progress isolation.
-
-Environment variables:
-- `OPENAI_API_KEY` — server-side only, never exposed to frontend
-- `DATABASE_URL` — Neon PostgreSQL connection string
-- `NEXT_PUBLIC_API_URL` — backend base URL (e.g., `http://localhost:8014`)
-- `CORS_ALLOWED_ORIGINS` — frontend origin(s) for Spring CORS config
+```
+ANTHROPIC_API_KEY=          # Claude — server-side only
+OPENAI_API_KEY=             # Fallback — optional
+AI_MODEL=claude-sonnet-4-6  # Override model if needed
+DATABASE_URL=               # Neon or local postgres connection string
+AUTH_SECRET=                # NextAuth secret
+```
 
 ---
 
 ## Development Phases
 
-### Phase 1 — Static MVP
-- [ ] Scaffold: Next.js 15 + Tailwind v4 + shadcn/ui + pnpm
-- [ ] Scaffold: Spring Boot 3 + Maven + Java 21
-- [ ] `DataSeeder` — seed 13 topics + 30 curated questions
-- [ ] REST endpoints: `GET /topics`, `GET /questions`, `GET /dashboard`
-- [ ] Dashboard page: stats cards + progress chart (Recharts)
-- [ ] Topics page: roadmap grid with static progress bars
-- [ ] Questions page: filterable table with status badges
-- [ ] AI Coach page: call `POST /ai/recommendations`, render weekly plan
-- [ ] `OpenAiService` — structured JSON response from `gpt-4o-mini`
-- [ ] CORS config, `.env.local` setup, `CorsConfig.java`
-- [ ] Port registry — frontend: 3014, backend: 8014
+### Phase 1 — MVP
+- [ ] Scaffold: Next.js 16 + TailwindCSS v4 + shadcn/ui + pnpm, port 3015
+- [ ] Drizzle schema: `topics`, `questions`, `progress` under `pgSchema('algo_coach')`
+- [ ] `scripts/seed.ts` — 13 topics + 30 curated questions
+- [ ] `db:generate` + `db:migrate` — run migrations against local Postgres
+- [ ] API routes: `GET /api/topics`, `GET /api/questions`, `GET /api/dashboard`
+- [ ] Dashboard page: stats cards + Recharts progress chart + AI panel
+- [ ] Topics page: roadmap grid with progress bars
+- [ ] Questions page: filterable table + status badge update
+- [ ] `PATCH /api/questions/[id]/status` — persists to DB
+- [ ] AI Coach page: `generateObject` call → Claude weekly plan
+- [ ] `lib/ai/index.ts` — Claude Sonnet 4.6 primary, OpenAI fallback
+- [ ] Theme: dark default, emerald accent, `next-themes`
 
-### Phase 2 — Real Persistence
-- [ ] Neon PostgreSQL connection via `spring.datasource`
-- [ ] JPA entities + Flyway migrations
-- [ ] `PATCH /questions/{id}/status` persists to DB
-- [ ] Progress table updated on status change
+### Phase 2 — Auth + Progress Tracking
+- [ ] NextAuth v5 — single seeded user, no login UI
+- [ ] Per-user progress isolation in DB
+- [ ] `progress` table auto-updated on question status change
 - [ ] Dashboard aggregations from real DB queries
+- [ ] AI insights: `POST /api/ai/insights` — weakness detection
 
-### Phase 3 — Auth + Personalization
-- [ ] Google OAuth via Spring Security + NextAuth.js
-- [ ] Per-user progress isolation
-- [ ] AI insights: `POST /ai/insights` — weakness detection from full history
-- [ ] Spaced repetition: flag questions due for review (`REVIEW_NEEDED` auto-set)
+### Phase 3 — Personalization
+- [ ] Spaced repetition: auto-flag questions as `review_needed` after N days
+- [ ] AI-generated weekly learning plans saved to DB
+- [ ] Confidence level self-rating on topic cards
+- [ ] Streak tracking with daily activity log
 
 ### Phase 4 — Coding Playground
 - [ ] Embedded code editor (Monaco Editor)
-- [ ] Code execution (Judge0 API or self-hosted)
-- [ ] AI solution review endpoint
+- [ ] Code execution (Judge0 API)
+- [ ] AI solution review via Claude tool use
