@@ -1,0 +1,62 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Semantic design tokens ────────────────────────────────────────────────────
+   Use bg-background, bg-card, text-foreground, border-border, etc.
+   Never write bg-white dark:bg-gray-800 directly.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* surfaces */
+  --background:       #ffffff;
+  --card:             #ffffff;
+  --popover:          #ffffff;
+  --muted:            #f9fafb;   /* gray-50 */
+  --subtle:           #f3f4f6;   /* gray-100 */
+  --input:            #ffffff;
+  /* borders */
+  --border:           #e5e7eb;   /* gray-200 */
+  /* text */
+  --foreground:       #111827;   /* gray-900 */
+  --muted-foreground: #6b7280;   /* gray-500 */
+  --faint:            #9ca3af;   /* gray-400 */
+  /* brand — yellow */
+  --primary:          #eab308;   /* yellow-500 */
+  --primary-foreground: #1a1200;
+}
+
+.dark {
+  --background:       #030712;   /* gray-950 */
+  --card:             #1f2937;   /* gray-800 */
+  --popover:          #111827;   /* gray-900 */
+  --muted:            #111827;   /* gray-900 */
+  --subtle:           #374151;   /* gray-700 */
+  --input:            #1f2937;   /* gray-800 */
+  --border:           #374151;   /* gray-700 */
+  --foreground:       #f3f4f6;   /* gray-100 */
+  --muted-foreground: #9ca3af;   /* gray-400 */
+  --faint:            #6b7280;   /* gray-500 */
+  --primary:          #facc15;   /* yellow-400 */
+  --primary-foreground: #1a1200;
+}
+
+@theme inline {
+  --color-background:         var(--background);
+  --color-card:               var(--card);
+  --color-popover:            var(--popover);
+  --color-muted:              var(--muted);
+  --color-subtle:             var(--subtle);
+  --color-input:              var(--input);
+  --color-border:             var(--border);
+  --color-foreground:         var(--foreground);
+  --color-muted-foreground:   var(--muted-foreground);
+  --color-faint:              var(--faint);
+  --color-primary:            var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html { font-size: 15px; }
