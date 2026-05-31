@@ -247,6 +247,28 @@ NEXTAUTH_URL=http://localhost:3015
 
 ---
 
+## Decision Records
+
+Files live in the app repo under `docs/adr/` and `docs/pdr/`. Each record is also registered in the ArchDoc `index.json`.
+
+### Planned ADRs
+
+| ID | Title | Key decision |
+|---|---|---|
+| ADR-001 | Next.js as Unified Full-Stack Framework | No separate backend — App Router + API routes only |
+| ADR-002 | Drizzle ORM with `postgres` Driver | Lightweight, type-safe ORM; no Prisma/JPA overhead |
+| ADR-003 | pgSchema Namespace Isolation | All tables under `pgSchema('algo_coach')` to avoid collisions on shared local Postgres |
+| ADR-004 | Vercel AI SDK + Claude Sonnet 4.6 | `generateObject` with Zod schema for typed structured output; OpenAI as fallback |
+
+### Planned PDRs
+
+| ID | Title | Key decision |
+|---|---|---|
+| PDR-001 | Product Vision — Personal Algorithm Interview Prep | Focus: learning patterns + AI coaching, not a LeetCode clone |
+| PDR-002 | MVP Scope — Seed Data + Working AI, No Auth | Phase 1 ships UI + Claude coach with seeded data; auth deferred to Phase 2 |
+
+---
+
 ## Workspace Registration
 
 Steps required by the runbook before the app is considered properly set up.
@@ -290,6 +312,66 @@ Steps required by the runbook before the app is considered properly set up.
       "created": "2026-05-31",
       "modified": "2026-05-31",
       "remark": "Algorithm interview prep platform with Claude AI coaching"
+    },
+    {
+      "id": "algo-coach-ai-adr-001",
+      "title": "ADR-001 — Next.js as Unified Full-Stack Framework",
+      "type": "markdown",
+      "path": "docs/algo-coach-ai/decisions/ADR-001-nextjs-fullstack.md",
+      "tags": ["algo-coach-ai", "adr", "architecture", "nextjs"],
+      "created": "2026-05-31",
+      "modified": "2026-05-31",
+      "remark": "No separate backend — App Router + API routes only"
+    },
+    {
+      "id": "algo-coach-ai-adr-002",
+      "title": "ADR-002 — Drizzle ORM with postgres Driver",
+      "type": "markdown",
+      "path": "docs/algo-coach-ai/decisions/ADR-002-drizzle-orm-postgres-driver.md",
+      "tags": ["algo-coach-ai", "adr", "database", "drizzle"],
+      "created": "2026-05-31",
+      "modified": "2026-05-31",
+      "remark": "Lightweight type-safe ORM over Prisma/JPA"
+    },
+    {
+      "id": "algo-coach-ai-adr-003",
+      "title": "ADR-003 — pgSchema Namespace Isolation",
+      "type": "markdown",
+      "path": "docs/algo-coach-ai/decisions/ADR-003-pgschema-namespace-isolation.md",
+      "tags": ["algo-coach-ai", "adr", "database", "postgres"],
+      "created": "2026-05-31",
+      "modified": "2026-05-31",
+      "remark": "All tables under pgSchema('algo_coach') to avoid collisions on shared Postgres"
+    },
+    {
+      "id": "algo-coach-ai-adr-004",
+      "title": "ADR-004 — Vercel AI SDK + Claude Sonnet 4.6",
+      "type": "markdown",
+      "path": "docs/algo-coach-ai/decisions/ADR-004-vercel-ai-sdk-claude.md",
+      "tags": ["algo-coach-ai", "adr", "ai", "claude", "anthropic"],
+      "created": "2026-05-31",
+      "modified": "2026-05-31",
+      "remark": "generateObject with Zod schema for typed AI output; OpenAI as fallback"
+    },
+    {
+      "id": "algo-coach-ai-pdr-001",
+      "title": "PDR-001 — Product Vision: Personal Algorithm Interview Prep",
+      "type": "markdown",
+      "path": "docs/algo-coach-ai/decisions/PDR-001-product-vision.md",
+      "tags": ["algo-coach-ai", "pdr", "product", "vision"],
+      "created": "2026-05-31",
+      "modified": "2026-05-31",
+      "remark": "Focus on learning patterns + AI coaching, not a LeetCode clone"
+    },
+    {
+      "id": "algo-coach-ai-pdr-002",
+      "title": "PDR-002 — MVP Scope: Seed Data + Working AI, No Auth",
+      "type": "markdown",
+      "path": "docs/algo-coach-ai/decisions/PDR-002-mvp-scope.md",
+      "tags": ["algo-coach-ai", "pdr", "product", "mvp", "scope"],
+      "created": "2026-05-31",
+      "modified": "2026-05-31",
+      "remark": "Phase 1 ships UI + Claude coach with seeded data; auth deferred to Phase 2"
     }
   ]
 }
@@ -336,6 +418,7 @@ algo-coach-status() {
 ## Development Phases
 
 ### Phase 1 — MVP
+- [ ] Write ADR-001 through ADR-004 + PDR-001 + PDR-002 in `docs/adr/` and `docs/pdr/`
 - [ ] Scaffold: Next.js 16 + TailwindCSS v4 + shadcn/ui + pnpm, port 3015
 - [ ] Drizzle schema: `topics`, `questions`, `progress` under `pgSchema('algo_coach')`
 - [ ] `scripts/seed.ts` — 13 topics + 30 curated questions
@@ -348,6 +431,7 @@ algo-coach-status() {
 - [ ] AI Coach page: `generateObject` call → Claude weekly plan
 - [ ] `lib/ai/index.ts` — Claude Sonnet 4.6 primary, OpenAI fallback
 - [ ] Theme: dark default, yellow accent (`#eab308`), `next-themes`
+- [ ] Register in workspace: `workspace-app-registry.md`, `portfolio/data/workspace.ts`, `index.json`, `~/.zshrc`
 
 ### Phase 2 — Auth + Progress Tracking
 - [ ] NextAuth v5 — single seeded user, no login UI

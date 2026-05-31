@@ -59,6 +59,13 @@ pnpm db:studio           # open Drizzle Studio (visual DB browser)
 pnpm db:reset            # drop and recreate schema
 ```
 
+## Decision Records
+
+- `docs/adr/` — Architecture Decision Records (ADR-001 through ADR-004 at project start)
+- `docs/pdr/` — Product Decision Records (PDR-001 through PDR-002 at project start)
+- Each record registered in `architecture-practice/public/docs/index.json` under the `algo-coach-ai` node
+- Use the runbook templates in `architecture-practice/public/docs/general/new-app-runbook.md`
+
 ## Design Identity
 
 - **Accent color** — yellow `#eab308` (Tailwind `yellow-500`)
