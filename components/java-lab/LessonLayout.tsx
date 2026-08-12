@@ -1,12 +1,13 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { CheckCircle2, Circle, Clock } from "lucide-react"
+import { useState, useEffect } from "react"
+import { CheckCircle2, Circle, Clock, Sparkles } from "lucide-react"
 import { LessonContent } from "./LessonContent"
 import { LessonNav } from "./LessonNav"
 import { CodeEditor } from "./CodeEditor"
 import { RunButton } from "./RunButton"
 import { OutputPanel, type RunResult } from "./OutputPanel"
+import { ExplainPanel } from "./ExplainPanel"
 import { type JavaCategory, type JavaLesson } from "@/lib/content/java-lab"
 import { cn } from "@/lib/utils/cn"
 
@@ -31,6 +32,9 @@ export function LessonLayout({ category, lesson, markdownContent, initialStatus 
   const [isRunning, setIsRunning] = useState(false)
   const [status, setStatus] = useState<LessonStatus>(initialStatus)
   const [isSaving, setIsSaving] = useState(false)
+  const [showExplain, setShowExplain] = useState(false)
+  const [explanation, setExplanation] = useState("")
+  const [isExplaining, setIsExplaining] = useState(false)
 
   // Mark as in_progress on first open (if not already done)
   useEffect(() => {
@@ -54,6 +58,34 @@ export function LessonLayout({ category, lesson, markdownContent, initialStatus 
       })
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  async function handleExplain() {
+    setShowExplain(true)
+    setExplanation("")
+    setIsExplaining(true)
+    try {
+      const res = await fetch("/api/java/explain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, lessonTitle: lesson.title }),
+      })
+      if (!res.ok || !res.body) throw new Error("Stream failed")
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value, { stream: true })
+        setExplanation((prev) => prev + chunk)
+      }
+    } catch (err) {
+      setExplanation("Failed to get explanation. Please try again.")
+    } finally {
+      setIsExplaining(false)
     }
   }
 
@@ -143,6 +175,27 @@ export function LessonLayout({ category, lesson, markdownContent, initialStatus 
             </div>
 
             <OutputPanel result={result} isRunning={isRunning} />
+
+            {/* AI Explain */}
+            {showExplain ? (
+              <ExplainPanel
+                content={explanation}
+                isStreaming={isExplaining}
+                onClose={() => { setShowExplain(false); setExplanation("") }}
+              />
+            ) : (
+              <button
+                onClick={handleExplain}
+                disabled={isExplaining}
+                className={cn(
+                  "flex items-center gap-2 self-end px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+                  "border border-primary/30 text-primary hover:bg-primary/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                )}
+              >
+                <Sparkles className="size-3.5" />
+                Explain with AI
+              </button>
+            )}
           </div>
         </div>
       </div>
