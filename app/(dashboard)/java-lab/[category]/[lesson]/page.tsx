@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 import { readFileSync } from "fs"
 import { join } from "path"
 import { getCategoryBySlug, getLessonBySlug } from "@/lib/content/java-lab"
+import { getLessonProgress } from "@/services/java-lab.service"
 import { LessonLayout } from "@/components/java-lab/LessonLayout"
 
 interface Props {
@@ -32,13 +33,24 @@ export default async function LessonPage({ params }: Props) {
   const lesson = getLessonBySlug(categorySlug, lessonSlug)
   if (!lesson) notFound()
 
-  const markdownContent =
-    readLessonMarkdown(categorySlug, lessonSlug) ??
-    `# ${lesson.title}\n\nLesson content coming soon.`
+  const [markdownContent, progressRow] = await Promise.all([
+    Promise.resolve(
+      readLessonMarkdown(categorySlug, lessonSlug) ??
+        `# ${lesson.title}\n\nLesson content coming soon.`
+    ),
+    getLessonProgress(categorySlug, lessonSlug),
+  ])
+
+  const initialStatus = (progressRow?.status ?? "not_started") as "not_started" | "in_progress" | "done"
 
   return (
     <div className="flex flex-col h-[calc(100vh-0px)] overflow-hidden">
-      <LessonLayout category={category} lesson={lesson} markdownContent={markdownContent} />
+      <LessonLayout
+        category={category}
+        lesson={lesson}
+        markdownContent={markdownContent}
+        initialStatus={initialStatus}
+      />
     </div>
   )
 }

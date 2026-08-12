@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import {
   Code2,
@@ -25,15 +26,20 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Trophy,
 }
 
-const DIFFICULTY_COLORS: Record<string, string> = {
-  foundational: "text-green-500",
-  intermediate: "text-yellow-500",
-  advanced: "text-red-500",
-}
+type CategoryStats = { slug: string; total: number; done: number; pct: number }
 
-function CategoryCard({ category }: { category: JavaCategory }) {
+function CategoryCard({
+  category,
+  stats,
+}: {
+  category: JavaCategory
+  stats: CategoryStats | undefined
+}) {
   const Icon = ICON_MAP[category.icon] ?? Code2
   const firstLesson = category.lessons[0]
+  const pct = stats?.pct ?? 0
+  const done = stats?.done ?? 0
+  const total = stats?.total ?? category.lessons.length
 
   return (
     <Link
@@ -50,30 +56,50 @@ function CategoryCard({ category }: { category: JavaCategory }) {
           </div>
           <div>
             <h3 className="text-sm font-semibold text-foreground">{category.title}</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">{category.lessons.length} lessons</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{total} lessons</p>
           </div>
         </div>
+        {pct === 100 ? (
+          <span className="text-xs font-medium text-green-500">Complete</span>
+        ) : pct > 0 ? (
+          <span className="text-xs text-muted-foreground">{done}/{total}</span>
+        ) : null}
       </div>
 
       <p className="text-xs text-muted-foreground leading-relaxed">{category.description}</p>
 
-      {firstLesson && (
-        <div className="flex items-center gap-2 mt-auto pt-2 border-t border-border">
-          <span className={cn("text-xs font-medium capitalize", DIFFICULTY_COLORS[firstLesson.difficulty])}>
-            {firstLesson.difficulty}
-          </span>
-          <span className="text-faint text-xs">· Start with {firstLesson.title}</span>
-        </div>
-      )}
+      {/* Progress bar */}
+      <div className="w-full h-1 rounded-full bg-muted/50 overflow-hidden">
+        <div
+          className={cn(
+            "h-full rounded-full transition-all duration-500",
+            pct === 100 ? "bg-green-500" : "bg-primary"
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
     </Link>
   )
 }
 
 export function CategoryGrid() {
+  const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([])
+
+  useEffect(() => {
+    fetch("/api/java/progress")
+      .then((r) => r.json())
+      .then((d) => setCategoryStats(d.categoryStats ?? []))
+      .catch(() => {})
+  }, [])
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {JAVA_CURRICULUM.map((category) => (
-        <CategoryCard key={category.slug} category={category} />
+        <CategoryCard
+          key={category.slug}
+          category={category}
+          stats={categoryStats.find((s) => s.slug === category.slug)}
+        />
       ))}
     </div>
   )

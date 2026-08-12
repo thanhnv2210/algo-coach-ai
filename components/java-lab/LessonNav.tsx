@@ -2,27 +2,33 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle } from "lucide-react"
+import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Clock } from "lucide-react"
 import { JAVA_CURRICULUM, type JavaCategory, type JavaLesson } from "@/lib/content/java-lab"
 import { cn } from "@/lib/utils/cn"
 
-const DIFFICULTY_BADGE: Record<string, string> = {
-  foundational: "bg-green-500/10 text-green-500",
-  intermediate: "bg-yellow-500/10 text-yellow-500",
-  advanced: "bg-red-500/10 text-red-500",
-}
+type LessonStatus = "not_started" | "in_progress" | "done"
 
 interface LessonNavProps {
   category: JavaCategory
   currentLesson: JavaLesson
+  currentStatus?: LessonStatus
 }
 
-export function LessonNav({ category, currentLesson }: LessonNavProps) {
+export function LessonNav({ category, currentLesson, currentStatus = "not_started" }: LessonNavProps) {
   const pathname = usePathname()
 
   const currentIndex = category.lessons.findIndex((l) => l.slug === currentLesson.slug)
   const prevLesson = currentIndex > 0 ? category.lessons[currentIndex - 1] : null
   const nextLesson = currentIndex < category.lessons.length - 1 ? category.lessons[currentIndex + 1] : null
+
+  function StatusIcon({ slug }: { slug: string }) {
+    const isActive = slug === currentLesson.slug
+    if (isActive) {
+      if (currentStatus === "done") return <CheckCircle2 className="size-3.5 text-green-500 shrink-0" />
+      if (currentStatus === "in_progress") return <Clock className="size-3.5 text-yellow-500 shrink-0" />
+    }
+    return <Circle className="size-3.5 shrink-0" />
+  }
 
   return (
     <aside className="w-56 shrink-0 flex flex-col border-r border-border h-full overflow-y-auto">
@@ -54,12 +60,8 @@ export function LessonNav({ category, currentLesson }: LessonNavProps) {
                   : "text-muted-foreground hover:bg-subtle hover:text-foreground"
               )}
             >
-              <div className="mt-0.5 shrink-0">
-                {isActive ? (
-                  <CheckCircle2 className="size-3.5 text-primary" />
-                ) : (
-                  <Circle className="size-3.5" />
-                )}
+              <div className="mt-0.5">
+                <StatusIcon slug={lesson.slug} />
               </div>
               <span className="leading-snug">{lesson.title}</span>
             </Link>

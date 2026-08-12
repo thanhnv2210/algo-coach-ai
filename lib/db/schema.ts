@@ -1,4 +1,4 @@
-import { date, integer, jsonb, numeric, pgSchema, text, timestamp, uuid } from "drizzle-orm/pg-core"
+import { date, integer, jsonb, numeric, pgSchema, serial, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core"
 
 // All tables live in the "algo_coach" schema,
 // isolated from other projects on the shared Postgres instance.
@@ -65,6 +65,20 @@ export const learningPlans = schema.table("learning_plans", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 })
 
+// ─── Java Lab Progress ────────────────────────────────────────────────────────
+
+export const javaLessonProgress = schema.table("java_lesson_progress", {
+  id: serial("id").primaryKey(),
+  categorySlug: varchar("category_slug", { length: 100 }).notNull(),
+  lessonSlug: varchar("lesson_slug", { length: 100 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("not_started"),
+  // "not_started" | "in_progress" | "done"
+  lastOpenedAt: timestamp("last_opened_at"),
+  completedAt: timestamp("completed_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+})
+
 // ─── Inferred types ────────────────────────────────────────────────────────────
 
 export type Topic = typeof topics.$inferSelect
@@ -81,3 +95,5 @@ export type QuestionStatus =
   | "mastered"
 export type ActivityLog = typeof activityLog.$inferSelect
 export type LearningPlan = typeof learningPlans.$inferSelect
+export type JavaLessonProgress = typeof javaLessonProgress.$inferSelect
+export type JavaLessonStatus = "not_started" | "in_progress" | "done"
