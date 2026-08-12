@@ -8,6 +8,7 @@ import {
   ListChecks,
   BrainCircuit,
   User,
+  FlaskConical,
 } from "lucide-react"
 import { cn } from "@/lib/utils/cn"
 import { ThemeToggle } from "@/components/nav/theme-toggle"
@@ -23,6 +24,7 @@ const navItems = [
   { href: "/",          label: "Dashboard",  icon: LayoutDashboard },
   { href: "/topics",    label: "Topics",     icon: BookOpen },
   { href: "/questions", label: "Questions",  icon: ListChecks },
+  { href: "/java-lab",  label: "Java Lab",   icon: FlaskConical },
   { href: "/ai-coach",  label: "AI Coach",   icon: BrainCircuit },
   { href: "/profile",   label: "Profile",    icon: User },
 ]

@@ -11,7 +11,15 @@
       "Bash(pg_isready -h localhost -p 5432)",
       "Bash(pg_isready -h localhost -p 54320)",
       "Bash(psql:*)",
-      "Bash(pnpm:*)"
+      "Bash(pnpm:*)",
+      "Bash(ls /Users/XuanNguyen/AI_WS/algo-coach-ai/app/\\\\\\(dashboard\\\\\\)/)",
+      "Bash(ls /Users/XuanNguyen/AI_WS/algo-coach-ai/app/\\\\\\(dashboard\\\\\\)/practice)",
+      "Bash(ls /Users/XuanNguyen/AI_WS/algo-coach-ai/app/\\\\\\(dashboard\\\\\\)/practice/[id]/)",
+      "Bash(npx next:*)",
+      "Bash(ls \"/Users/XuanNguyen/AI_WS/algo-coach-ai/app/\\(dashboard\\)/java-lab/\")",
+      "Bash(curl:*)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(npx dotenv:*)"
     ]
   }
 }

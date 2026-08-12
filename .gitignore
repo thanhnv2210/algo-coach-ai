@@ -15,6 +15,9 @@ build/
 *.pem
 /tmp
 
+# local claude settings
+.claude/settings.local.json
+
 # debug
 npm-debug.log*
 pnpm-debug.log*
