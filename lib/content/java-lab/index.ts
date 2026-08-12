@@ -614,6 +614,511 @@ public class JavaLabRunner {
     }
 }`,
       },
+      {
+        slug: '02-bean-lifecycle',
+        title: 'Spring Bean Lifecycle',
+        order: 2,
+        difficulty: 'advanced',
+        tags: ['Spring', 'BeanPostProcessor', 'PostConstruct', 'PreDestroy', 'lifecycle'],
+        defaultCode: `// Simulates Spring bean lifecycle phases without a Spring context.
+
+public class JavaLabRunner {
+    interface InitializingBean { void afterPropertiesSet() throws Exception; }
+    interface DisposableBean  { void destroy() throws Exception; }
+
+    static class DatabasePool implements InitializingBean, DisposableBean {
+        private String url;
+        private boolean initialized = false;
+
+        // Simulates @Value injection
+        void setUrl(String url) { this.url = url; }
+
+        // Simulates @PostConstruct / afterPropertiesSet
+        @Override public void afterPropertiesSet() {
+            System.out.println("1. afterPropertiesSet: opening pool to " + url);
+            initialized = true;
+        }
+
+        void query(String sql) {
+            if (!initialized) throw new IllegalStateException("Bean not initialized!");
+            System.out.println("2. Executing: " + sql);
+        }
+
+        // Simulates @PreDestroy / destroy
+        @Override public void destroy() {
+            System.out.println("3. destroy: closing pool");
+            initialized = false;
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        // Phase 1: instantiate
+        DatabasePool pool = new DatabasePool();
+        // Phase 2: inject properties
+        pool.setUrl("jdbc:postgresql://localhost:5432/mydb");
+        // Phase 3: post-construct
+        pool.afterPropertiesSet();
+        // Phase 4: in use
+        pool.query("SELECT * FROM users");
+        // Phase 5: pre-destroy (container shutdown)
+        pool.destroy();
+    }
+}`,
+      },
+      {
+        slug: '03-mvc-request-lifecycle',
+        title: 'Spring MVC Request Lifecycle',
+        order: 3,
+        difficulty: 'advanced',
+        tags: ['Spring', 'DispatcherServlet', 'HandlerMapping', 'Filter', 'Interceptor'],
+        defaultCode: `// Simulates the Spring MVC request pipeline without Servlet/Spring context.
+
+public class JavaLabRunner {
+    record HttpRequest(String method, String path, String body) {}
+    record HttpResponse(int status, String body) {}
+
+    // Filter: runs before/after the entire handler chain
+    interface Filter {
+        HttpResponse doFilter(HttpRequest req, FilterChain chain);
+    }
+    interface FilterChain {
+        HttpResponse proceed(HttpRequest req);
+    }
+
+    // Interceptor: runs before/after the controller method
+    interface HandlerInterceptor {
+        boolean preHandle(HttpRequest req);
+        void postHandle(HttpRequest req, HttpResponse res);
+    }
+
+    static class LoggingFilter implements Filter {
+        public HttpResponse doFilter(HttpRequest req, FilterChain chain) {
+            System.out.println("[Filter] --> " + req.method() + " " + req.path());
+            HttpResponse res = chain.proceed(req);
+            System.out.println("[Filter] <-- " + res.status());
+            return res;
+        }
+    }
+
+    static class AuthInterceptor implements HandlerInterceptor {
+        public boolean preHandle(HttpRequest req) {
+            System.out.println("[Interceptor] preHandle: checking auth");
+            return true; // return false to abort
+        }
+        public void postHandle(HttpRequest req, HttpResponse res) {
+            System.out.println("[Interceptor] postHandle: adding headers");
+        }
+    }
+
+    static class UserController {
+        HttpResponse getUser(HttpRequest req) {
+            System.out.println("[Controller] handling " + req.path());
+            return new HttpResponse(200, "{\\"name\\":\\"Alice\\"}");
+        }
+    }
+
+    public static void main(String[] args) {
+        HttpRequest req = new HttpRequest("GET", "/api/users/1", null);
+        LoggingFilter filter = new LoggingFilter();
+        AuthInterceptor interceptor = new AuthInterceptor();
+        UserController controller = new UserController();
+
+        filter.doFilter(req, r -> {
+            if (!interceptor.preHandle(r)) return new HttpResponse(401, "Unauthorized");
+            HttpResponse res = controller.getUser(r);
+            interceptor.postHandle(r, res);
+            return res;
+        });
+    }
+}`,
+      },
+      {
+        slug: '04-webflux-reactive',
+        title: 'Spring WebFlux & Reactive Streams',
+        order: 4,
+        difficulty: 'advanced',
+        tags: ['WebFlux', 'Mono', 'Flux', 'reactive', 'backpressure', 'Project-Reactor'],
+        defaultCode: `import java.util.*;
+import java.util.concurrent.*;
+import java.util.function.*;
+
+// Simplified Mono/Flux simulation — no Project Reactor dependency needed.
+public class JavaLabRunner {
+    // Minimal Mono simulation
+    static class Mono<T> {
+        private final Supplier<T> supplier;
+        private Mono(Supplier<T> s) { this.supplier = s; }
+
+        static <T> Mono<T> just(T value) { return new Mono<>(() -> value); }
+        static <T> Mono<T> fromCallable(Callable<T> c) {
+            return new Mono<>(() -> { try { return c.call(); } catch (Exception e) { throw new RuntimeException(e); } });
+        }
+
+        <R> Mono<R> map(Function<T, R> fn) { return new Mono<>(() -> fn.apply(supplier.get())); }
+        <R> Mono<R> flatMap(Function<T, Mono<R>> fn) { return new Mono<>(() -> fn.apply(supplier.get()).supplier.get()); }
+        Mono<T> doOnNext(Consumer<T> consumer) { return new Mono<>(() -> { T v = supplier.get(); consumer.accept(v); return v; }); }
+        T block() { return supplier.get(); }
+        void subscribe(Consumer<T> consumer) { consumer.accept(supplier.get()); }
+    }
+
+    // Simulated repository
+    static class UserRepository {
+        static final Map<Integer, String> DB = Map.of(1, "Alice", 2, "Bob");
+        Mono<String> findById(int id) {
+            return Mono.fromCallable(() -> {
+                String user = DB.get(id);
+                if (user == null) throw new RuntimeException("User " + id + " not found");
+                return user;
+            });
+        }
+    }
+
+    public static void main(String[] args) {
+        UserRepository repo = new UserRepository();
+
+        // Reactive pipeline: find user, transform, log, subscribe
+        repo.findById(1)
+            .map(name -> "Hello, " + name + "!")
+            .doOnNext(msg -> System.out.println("Sending: " + msg))
+            .subscribe(System.out::println);
+
+        // Chained flatMap
+        Mono<String> result = repo.findById(2)
+            .flatMap(name -> Mono.just(name.toUpperCase()))
+            .map(name -> "Welcome back, " + name);
+        System.out.println(result.block());
+    }
+}`,
+      },
+      {
+        slug: '05-spring-data',
+        title: 'Spring Data & Repository Pattern',
+        order: 5,
+        difficulty: 'advanced',
+        tags: ['Spring-Data', 'JpaRepository', 'Repository', 'N+1', 'custom-query'],
+        defaultCode: `import java.util.*;
+import java.util.stream.*;
+
+// Simulates Spring Data repository pattern without JPA/Hibernate.
+public class JavaLabRunner {
+    record User(int id, int deptId, String name, String email) {}
+    record Department(int id, String name) {}
+    record UserWithDept(String userName, String deptName) {}
+
+    // Simulates JpaRepository<User, Integer>
+    static class UserRepository {
+        private final List<User> store = new ArrayList<>(List.of(
+            new User(1, 10, "Alice", "alice@example.com"),
+            new User(2, 10, "Bob",   "bob@example.com"),
+            new User(3, 20, "Carol", "carol@example.com")
+        ));
+
+        Optional<User> findById(int id) {
+            return store.stream().filter(u -> u.id() == id).findFirst();
+        }
+        List<User> findAll() { return Collections.unmodifiableList(store); }
+        List<User> findByDeptId(int deptId) {
+            return store.stream().filter(u -> u.deptId() == deptId).toList();
+        }
+        User save(User user) { store.add(user); return user; }
+        void deleteById(int id) { store.removeIf(u -> u.id() == id); }
+    }
+
+    static class DeptRepository {
+        private final Map<Integer, Department> store = new HashMap<>(Map.of(
+            10, new Department(10, "Engineering"),
+            20, new Department(20, "Marketing")
+        ));
+        Optional<Department> findById(int id) { return Optional.ofNullable(store.get(id)); }
+    }
+
+    public static void main(String[] args) {
+        UserRepository users = new UserRepository();
+        DeptRepository depts = new DeptRepository();
+
+        // findById
+        System.out.println("findById(1): " + users.findById(1));
+
+        // N+1 problem — BAD: one query per user to fetch dept
+        System.out.println("\\nN+1 pattern (bad):");
+        users.findAll().forEach(u -> {
+            Department d = depts.findById(u.deptId()).orElseThrow();
+            System.out.println("  " + u.name() + " -> " + d.name());
+        });
+
+        // Fixed: join in memory (in JPA use @EntityGraph or JOIN FETCH)
+        System.out.println("\\nJoin fetch pattern (good):");
+        Map<Integer, Department> deptCache = users.findAll().stream()
+            .map(User::deptId).distinct()
+            .collect(Collectors.toMap(id -> id, id -> depts.findById(id).orElseThrow()));
+        users.findAll().forEach(u ->
+            System.out.println("  " + u.name() + " -> " + deptCache.get(u.deptId()).name())
+        );
+
+        // save + delete
+        users.save(new User(4, 20, "Dave", "dave@example.com"));
+        System.out.println("\\nAfter save: " + users.findAll().size() + " users");
+        users.deleteById(4);
+        System.out.println("After delete: " + users.findAll().size() + " users");
+    }
+}`,
+      },
+      {
+        slug: '06-transactional',
+        title: '@Transactional Internals',
+        order: 6,
+        difficulty: 'advanced',
+        tags: ['Transactional', 'propagation', 'isolation', 'proxy', 'rollback', 'Spring'],
+        defaultCode: `import java.util.*;
+
+// Simulates @Transactional behaviour and common pitfalls without Spring.
+public class JavaLabRunner {
+    static class TransactionException extends RuntimeException {
+        TransactionException(String msg) { super(msg); }
+    }
+
+    // Simulated transaction context
+    static class TransactionManager {
+        private final List<String> log = new ArrayList<>();
+        private boolean active = false;
+
+        void begin() { active = true; log.clear(); System.out.println("[TX] BEGIN"); }
+        void commit() { active = false; System.out.println("[TX] COMMIT — ops: " + log); }
+        void rollback() { active = false; log.clear(); System.out.println("[TX] ROLLBACK"); }
+
+        void execute(String operation) {
+            if (!active) throw new IllegalStateException("No active transaction!");
+            log.add(operation);
+            System.out.println("[TX] " + operation);
+        }
+    }
+
+    static TransactionManager tm = new TransactionManager();
+
+    // Simulates @Transactional(propagation = REQUIRED)
+    static void transferFunds(int from, int to, int amount) {
+        tm.execute("debit account " + from + " by " + amount);
+        if (amount > 500) throw new TransactionException("Amount exceeds daily limit");
+        tm.execute("credit account " + to + " by " + amount);
+    }
+
+    // Simulates @Transactional(propagation = REQUIRES_NEW)
+    static void auditLog(String message) {
+        // In real Spring: suspends outer TX, starts its own
+        System.out.println("[AUDIT] " + message + " (would run in separate TX)");
+    }
+
+    // Self-invocation pitfall: this.method() bypasses the proxy!
+    static class PaymentService {
+        void processPayment(int amount) {
+            System.out.println("[Service] processPayment — TX applied via proxy");
+            validateAndTransfer(amount); // PITFALL: same-class call bypasses @Transactional!
+        }
+        void validateAndTransfer(int amount) {
+            System.out.println("[Service] validateAndTransfer — @Transactional ignored here!");
+        }
+    }
+
+    public static void main(String[] args) {
+        // Successful transaction
+        System.out.println("=== Successful transfer ===");
+        tm.begin();
+        try {
+            transferFunds(1, 2, 100);
+            tm.commit();
+        } catch (TransactionException e) {
+            tm.rollback();
+        }
+
+        // Rollback on exception
+        System.out.println("\\n=== Failed transfer (rollback) ===");
+        tm.begin();
+        try {
+            transferFunds(1, 2, 1000);
+            tm.commit();
+        } catch (TransactionException e) {
+            System.out.println("[Exception] " + e.getMessage());
+            tm.rollback();
+        }
+
+        // Self-invocation pitfall demo
+        System.out.println("\\n=== Self-invocation pitfall ===");
+        new PaymentService().processPayment(200);
+    }
+}`,
+      },
+      {
+        slug: '07-spring-security',
+        title: 'Spring Security Overview',
+        order: 7,
+        difficulty: 'advanced',
+        tags: ['Spring-Security', 'FilterChain', 'SecurityContext', 'JWT', 'authentication'],
+        defaultCode: `import java.util.*;
+import java.util.Base64;
+
+// Simulates Spring Security filter chain and JWT auth without Spring/libraries.
+public class JavaLabRunner {
+    record UserPrincipal(String username, List<String> roles) {}
+
+    // Simulates SecurityContextHolder
+    static final ThreadLocal<UserPrincipal> SECURITY_CONTEXT = new ThreadLocal<>();
+
+    static void setAuth(UserPrincipal principal) { SECURITY_CONTEXT.set(principal); }
+    static UserPrincipal getAuth() { return SECURITY_CONTEXT.get(); }
+    static void clearAuth() { SECURITY_CONTEXT.remove(); }
+
+    // Minimal JWT simulation (header.payload.signature — not cryptographically real)
+    static String createToken(String username, String role) {
+        String payload = Base64.getEncoder().encodeToString(
+            (username + ":" + role).getBytes()
+        );
+        return "header." + payload + ".signature";
+    }
+
+    static Optional<UserPrincipal> validateToken(String token) {
+        try {
+            String[] parts = token.split("\\\\.");
+            if (parts.length != 3) return Optional.empty();
+            String decoded = new String(Base64.getDecoder().decode(parts[1]));
+            String[] claims = decoded.split(":");
+            return Optional.of(new UserPrincipal(claims[0], List.of(claims[1])));
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+
+    // Simulates the security filter chain
+    static boolean jwtFilter(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            System.out.println("[Security] No bearer token — anonymous request");
+            return false;
+        }
+        String token = authHeader.substring(7);
+        Optional<UserPrincipal> principal = validateToken(token);
+        principal.ifPresentOrElse(
+            p -> { setAuth(p); System.out.println("[Security] Authenticated: " + p.username() + " roles=" + p.roles()); },
+            ()  -> System.out.println("[Security] Invalid token — 401")
+        );
+        return principal.isPresent();
+    }
+
+    // Simulates @PreAuthorize("hasRole('ADMIN')")
+    static void adminEndpoint() {
+        UserPrincipal auth = getAuth();
+        if (auth == null || !auth.roles().contains("ADMIN")) {
+            System.out.println("[Controller] 403 Forbidden");
+            return;
+        }
+        System.out.println("[Controller] Admin dashboard — welcome, " + auth.username());
+    }
+
+    public static void main(String[] args) {
+        System.out.println("=== Request 1: no token ===");
+        jwtFilter(null);
+        adminEndpoint();
+
+        System.out.println("\\n=== Request 2: invalid token ===");
+        jwtFilter("Bearer bad.token.here");
+        adminEndpoint();
+
+        System.out.println("\\n=== Request 3: valid USER token ===");
+        String userToken = createToken("alice", "USER");
+        jwtFilter("Bearer " + userToken);
+        adminEndpoint(); // 403 — not ADMIN
+
+        System.out.println("\\n=== Request 4: valid ADMIN token ===");
+        clearAuth();
+        String adminToken = createToken("bob", "ADMIN");
+        jwtFilter("Bearer " + adminToken);
+        adminEndpoint(); // 200
+
+        clearAuth();
+    }
+}`,
+      },
+      {
+        slug: '08-actuator-logging',
+        title: 'Production-Ready: Actuator & Logging',
+        order: 8,
+        difficulty: 'advanced',
+        tags: ['Actuator', 'health-check', 'metrics', 'MDC', 'structured-logging', 'Spring'],
+        defaultCode: `import java.util.*;
+import java.time.Instant;
+
+// Simulates Spring Boot Actuator health checks and structured logging with MDC.
+public class JavaLabRunner {
+    // ── Health indicators (mirrors /actuator/health) ──────────
+    interface HealthIndicator {
+        record Health(String status, Map<String, Object> details) {}
+        Health health();
+    }
+
+    static class DatabaseHealthIndicator implements HealthIndicator {
+        private final boolean connected;
+        DatabaseHealthIndicator(boolean connected) { this.connected = connected; }
+        public Health health() {
+            return connected
+                ? new Health("UP", Map.of("pool", "10/10 available", "responseMs", 2))
+                : new Health("DOWN", Map.of("error", "Connection refused"));
+        }
+    }
+
+    static class DiskSpaceIndicator implements HealthIndicator {
+        public Health health() {
+            long freeBytes = Runtime.getRuntime().freeMemory();
+            return new Health("UP", Map.of("free", freeBytes / 1024 + " KB"));
+        }
+    }
+
+    // ── MDC-style structured logging ──────────────────────────
+    static final ThreadLocal<Map<String, String>> MDC = ThreadLocal.withInitial(HashMap::new);
+
+    static void mdcPut(String key, String value) { MDC.get().put(key, value); }
+    static void mdcClear() { MDC.get().clear(); }
+
+    static void log(String level, String message) {
+        Map<String, String> ctx = MDC.get();
+        System.out.printf("{\"ts\":\"%s\",\"level\":\"%s\",\"msg\":\"%s\"%s}%n",
+            Instant.now(), level, message,
+            ctx.isEmpty() ? "" : ",\"ctx\":" + ctx);
+    }
+
+    // ── Simulated /actuator/metrics counter ───────────────────
+    static final Map<String, Long> METRICS = new HashMap<>();
+    static void incrementMetric(String name) { METRICS.merge(name, 1L, Long::sum); }
+
+    public static void main(String[] args) {
+        // Health check aggregation
+        System.out.println("=== /actuator/health ===");
+        List<HealthIndicator> indicators = List.of(
+            new DatabaseHealthIndicator(true),
+            new DiskSpaceIndicator()
+        );
+        String overallStatus = "UP";
+        for (HealthIndicator hi : indicators) {
+            HealthIndicator.Health h = hi.health();
+            if ("DOWN".equals(h.status())) overallStatus = "DOWN";
+            System.out.println(hi.getClass().getSimpleName() + ": " + h.status() + " " + h.details());
+        }
+        System.out.println("Overall: " + overallStatus);
+
+        // Structured logging with MDC
+        System.out.println("\\n=== Structured logging ===");
+        mdcPut("requestId", UUID.randomUUID().toString().substring(0, 8));
+        mdcPut("userId", "user-42");
+        log("INFO", "Request received");
+        incrementMetric("http.requests.total");
+        log("INFO", "Processing order");
+        incrementMetric("orders.created");
+        log("INFO", "Response sent");
+        mdcClear();
+
+        // Metrics snapshot
+        System.out.println("\\n=== /actuator/metrics ===");
+        METRICS.forEach((k, v) -> System.out.println(k + ": " + v));
+    }
+}`,
+      },
     ],
   },
   {
