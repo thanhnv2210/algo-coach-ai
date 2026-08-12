@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbo -p 3015",
-    "dev:clean": "rm -rf .next && next dev --turbo -p 3015",
+    "dev": "mkdir -p logs && next dev --turbo -p 3015 2>&1 | tee -a logs/app.log",
+    "dev:clean": "rm -rf .next && mkdir -p logs && next dev --turbo -p 3015 2>&1 | tee -a logs/app.log",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

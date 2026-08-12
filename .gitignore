@@ -21,3 +21,6 @@ build/
 # debug
 npm-debug.log*
 pnpm-debug.log*
+
+# app logs
+logs/
