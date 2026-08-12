@@ -61,8 +61,8 @@ pnpm db:reset            # drop and recreate schema
 
 ## Decision Records
 
-- `docs/adr/` — Architecture Decision Records (ADR-001 through ADR-004 at project start)
-- `docs/pdr/` — Product Decision Records (PDR-001 through PDR-002 at project start)
+- `docs/adr/` — Architecture Decision Records (ADR-001 through ADR-005)
+- `docs/pdr/` — Product Decision Records (PDR-001 through PDR-004)
 - Each record registered in `architecture-practice/public/docs/index.json` under the `algo-coach-ai` node
 - Use the runbook templates in `architecture-practice/public/docs/general/new-app-runbook.md`
 
@@ -79,3 +79,49 @@ pnpm db:reset            # drop and recreate schema
 - `/questions` — Curated question library with status tracking
 - `/ai-coach` — AI-generated learning suggestions
 - `/profile` — Learning summary and progress overview
+
+## Java Lab Feature (Milestone 2)
+
+A personal Java learning environment modeled on w3schools — read structured lessons and run code instantly. For Senior Java interview preparation only (no beginner content).
+
+### Key docs
+- `docs/pdr/PDR-004-java-lab.md` — product rationale and scope
+- `docs/adr/ADR-005-java-code-runner.md` — local `javac` vs external API decision
+- `docs/java-lab-curriculum.md` — full 8-category, 58-lesson curriculum
+- `docs/java-lab-implementation.md` — phased implementation guide with code skeletons
+
+### New routes
+- `/java-lab` — category browser (8 topic cards)
+- `/java-lab/[category]/[lesson]` — two-pane: lesson doc left, Monaco editor + output right
+
+### New API routes
+- `POST /api/java/run` — compiles and runs Java code via local `javac`/`java`, returns stdout/stderr
+- `POST /api/java/explain` — streams Claude explanation of the current code snippet
+- `GET|POST /api/java/progress` — reads/writes lesson completion status
+
+### New components (`components/java-lab/`)
+- `CategoryGrid.tsx` — 8-card grid for the /java-lab home page
+- `LessonLayout.tsx` — two-pane lesson page layout
+- `LessonNav.tsx` — lesson list sidebar within a category
+- `LessonContent.tsx` — markdown-rendered lesson doc
+- `CodeEditor.tsx` — Monaco Editor wrapper (Java mode, dark theme, pre-loaded default code)
+- `RunButton.tsx` — triggers `POST /api/java/run`, shows spinner
+- `OutputPanel.tsx` — stdout/stderr display with exit code and duration badge
+
+### New lesson content (`lib/content/java-lab/`)
+- `index.ts` — curriculum registry (`JavaCategory[]` → `JavaLesson[]` with slugs, defaultCode, tags)
+- One folder per category: `core-java/`, `collections/`, `streams/`, `concurrency/`, `jvm/`, `design-patterns/`, `spring/`, `interview-patterns/`
+- Each lesson is a `.md` file with the standard template (see `docs/java-lab-curriculum.md`)
+
+### New DB table (Phase 3)
+- `java_lesson_progress` — tracks `status` (`not_started` / `in_progress` / `done`) and personal notes per lesson
+
+### Prerequisites
+- JDK 17+ installed (`java -version` and `javac -version` must both return ≥ 17)
+- All lesson snippets must declare `public class JavaLabRunner` as the outer class
+
+### Delivery order
+1. Phase 1 — static lessons + Monaco editor (no DB, no runner) — start with Category 2: Collections
+2. Phase 2 — `POST /api/java/run` code runner
+3. Phase 3 — progress tracking DB
+4. Phase 4 — AI explain streaming
