@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { streamText } from "ai"
 import { defaultModel } from "@/lib/ai"
 import { logger } from "@/lib/logger"

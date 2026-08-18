@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { NextRequest, NextResponse } from "next/server"
 import { updateQuestionStatus } from "@/services/question.service"
 import { upsertProgress } from "@/services/progress.service"

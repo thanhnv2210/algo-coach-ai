@@ -1,15 +1,26 @@
 import { getDashboardStats } from "@/services/dashboard.service"
+import { getCategoryStats } from "@/services/java-lab.service"
 import { flagStaleQuestions } from "@/services/question.service"
+import { JAVA_CURRICULUM } from "@/lib/content/java-lab"
 import { StatsCard } from "@/components/dashboard/stats-card"
 import { ProgressChart } from "@/components/dashboard/progress-chart"
 import { AIPanel } from "@/components/dashboard/ai-panel"
+import { JavaLabPanel } from "@/components/dashboard/java-lab-panel"
 
 export const dynamic = "force-dynamic"
 
 export default async function DashboardPage() {
-  // Run spaced-repetition check on every dashboard load (fast, no-op if nothing stale)
   await flagStaleQuestions(7)
-  const stats = await getDashboardStats()
+  const [stats, categoryStats] = await Promise.all([
+    getDashboardStats(),
+    getCategoryStats(),
+  ])
+
+  // Merge category titles from curriculum into stats
+  const categoriesWithTitles = categoryStats.map((s) => ({
+    ...s,
+    title: JAVA_CURRICULUM.find((c) => c.slug === s.slug)?.title ?? s.slug,
+  }))
 
   return (
     <div className="px-8 py-8 max-w-5xl mx-auto">
@@ -30,11 +41,13 @@ export default async function DashboardPage() {
         <StatsCard label="Topics Active" value={`${stats.topicsCovered}/${stats.totalTopics}`} />
       </div>
 
-      {/* Chart + AI panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Chart + AI panel + Java Lab */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <ProgressChart data={stats.topicProgress} />
         <AIPanel />
       </div>
+
+      <JavaLabPanel categories={categoriesWithTitles} />
     </div>
   )
 }

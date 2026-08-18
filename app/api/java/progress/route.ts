@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { getAllProgress, upsertLessonProgress, getCategoryStats } from "@/services/java-lab.service"
 import type { JavaLessonStatus } from "@/lib/db/schema"
 

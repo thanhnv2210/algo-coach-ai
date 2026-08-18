@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { exec } from "child_process"
 import { writeFile, unlink } from "fs/promises"
 import { mkdir } from "fs/promises"
