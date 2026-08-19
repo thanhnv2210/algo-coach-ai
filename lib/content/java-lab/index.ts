@@ -457,6 +457,153 @@ public class JavaLabRunner {
     }
 }`,
       },
+      {
+        slug: '02-stream-pipeline',
+        title: 'Stream Pipeline & Lazy Evaluation',
+        order: 2,
+        difficulty: 'intermediate',
+        tags: ['Stream', 'filter', 'map', 'reduce', 'flatMap', 'lazy', 'IntStream', 'interview-common'],
+        defaultCode: `import java.util.*;
+import java.util.stream.*;
+
+public class JavaLabRunner {
+    public static void main(String[] args) {
+        List<Integer> numbers = List.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+
+        // filter → map → collect
+        List<Integer> result = numbers.stream()
+            .filter(n -> n % 2 == 0)
+            .map(n -> n * n)
+            .collect(Collectors.toList());
+        System.out.println("Even squares: " + result);
+
+        // Short-circuit
+        Optional<Integer> first = numbers.stream()
+            .filter(n -> n > 5)
+            .findFirst();
+        System.out.println("First > 5: " + first.orElse(-1));
+
+        // Primitive stream — avoids boxing
+        int sum = IntStream.rangeClosed(1, 10).sum();
+        System.out.println("Sum 1-10: " + sum);
+
+        // reduce
+        int product = numbers.stream().reduce(1, (a, b) -> a * b);
+        System.out.println("Product: " + product);
+
+        // flatMap
+        List<List<Integer>> nested = List.of(List.of(1, 2), List.of(3, 4), List.of(5));
+        List<Integer> flat = nested.stream()
+            .flatMap(Collection::stream)
+            .collect(Collectors.toList());
+        System.out.println("Flattened: " + flat);
+    }
+}`,
+      },
+      {
+        slug: '03-collectors',
+        title: 'Collectors & Stream Aggregation',
+        order: 3,
+        difficulty: 'intermediate',
+        tags: ['Collectors', 'groupingBy', 'partitioningBy', 'toMap', 'joining', 'summarizingInt', 'interview-common'],
+        defaultCode: `import java.util.*;
+import java.util.stream.*;
+
+public class JavaLabRunner {
+    record Person(String name, String dept, int salary) {}
+
+    public static void main(String[] args) {
+        List<Person> people = List.of(
+            new Person("Alice", "Eng",  90000),
+            new Person("Bob",   "Eng",  85000),
+            new Person("Carol", "HR",   70000),
+            new Person("Dave",  "HR",   72000),
+            new Person("Eve",   "Eng",  95000)
+        );
+
+        // groupingBy
+        Map<String, List<Person>> byDept = people.stream()
+            .collect(Collectors.groupingBy(Person::dept));
+        System.out.println("Depts: " + byDept.keySet());
+
+        // groupingBy + downstream: count
+        Map<String, Long> countByDept = people.stream()
+            .collect(Collectors.groupingBy(Person::dept, Collectors.counting()));
+        System.out.println("Count: " + countByDept);
+
+        // groupingBy + averagingInt
+        Map<String, Double> avgSalary = people.stream()
+            .collect(Collectors.groupingBy(Person::dept, Collectors.averagingInt(Person::salary)));
+        System.out.println("Avg salary: " + avgSalary);
+
+        // partitioningBy
+        Map<Boolean, List<Person>> partition = people.stream()
+            .collect(Collectors.partitioningBy(p -> p.salary() >= 85000));
+        System.out.println("High earners: " + partition.get(true).stream().map(Person::name).toList());
+
+        // joining
+        String names = people.stream().map(Person::name).collect(Collectors.joining(", ", "[", "]"));
+        System.out.println("Names: " + names);
+
+        // summarizingInt
+        IntSummaryStatistics stats = people.stream().collect(Collectors.summarizingInt(Person::salary));
+        System.out.printf("Salary: min=%d, max=%d, avg=%.0f%n",
+            stats.getMin(), stats.getMax(), stats.getAverage());
+    }
+}`,
+      },
+      {
+        slug: '04-optional',
+        title: 'Optional — Null-Safe Programming',
+        order: 4,
+        difficulty: 'intermediate',
+        tags: ['Optional', 'orElse', 'flatMap', 'null-safety', 'anti-patterns'],
+        defaultCode: `import java.util.*;
+import java.util.stream.*;
+
+public class JavaLabRunner {
+    record User(String name, String email) {}
+
+    static Optional<User> findById(int id) {
+        return id == 1 ? Optional.of(new User("Alice", "alice@example.com"))
+                       : Optional.empty();
+    }
+
+    static Optional<String> getEmail(User user) {
+        return Optional.ofNullable(user.email());
+    }
+
+    public static void main(String[] args) {
+        Optional<String> present  = Optional.of("hello");
+        Optional<String> empty    = Optional.empty();
+
+        System.out.println("orElse:    " + empty.orElse("default"));
+        System.out.println("orElseGet: " + empty.orElseGet(() -> "computed"));
+        present.ifPresent(v -> System.out.println("ifPresent: " + v));
+
+        // map and flatMap
+        System.out.println("map length: " + present.map(String::length).orElse(0));
+
+        Optional<String> email = findById(1).flatMap(JavaLabRunner::getEmail);
+        System.out.println("flatMap email: " + email.orElse("no email"));
+
+        // filter
+        System.out.println("filter: " + present.filter(s -> s.length() > 3).isPresent());
+
+        // orElseThrow
+        try {
+            empty.orElseThrow(() -> new IllegalStateException("Not found"));
+        } catch (IllegalStateException e) {
+            System.out.println("orElseThrow: " + e.getMessage());
+        }
+
+        // Stream integration (Java 9+)
+        List<Optional<String>> optionals = List.of(present, empty, Optional.of("world"));
+        List<String> values = optionals.stream().flatMap(Optional::stream).toList();
+        System.out.println("Stream flatMap: " + values);
+    }
+}`,
+      },
     ],
   },
   {
@@ -491,6 +638,327 @@ public class JavaLabRunner {
         running = false;
         worker.join();
         System.out.println("After join: " + worker.getState());   // TERMINATED
+    }
+}`,
+      },
+      {
+        slug: '02-synchronized-volatile',
+        title: 'synchronized & volatile',
+        order: 2,
+        difficulty: 'intermediate',
+        tags: ['synchronized', 'volatile', 'race-condition', 'monitor', 'interview-common'],
+        defaultCode: `public class JavaLabRunner {
+    static int unsafeCounter = 0;
+    static int safeCounter = 0;
+    static volatile boolean flag = false;
+
+    static synchronized void increment() { safeCounter++; }
+
+    public static void main(String[] args) throws InterruptedException {
+        Thread[] threads = new Thread[10];
+        for (int i = 0; i < 10; i++) {
+            threads[i] = new Thread(() -> {
+                for (int j = 0; j < 1000; j++) {
+                    unsafeCounter++;
+                    increment();
+                }
+            });
+            threads[i].start();
+        }
+        for (Thread t : threads) t.join();
+
+        System.out.println("Expected:  10000");
+        System.out.println("Safe:      " + safeCounter);
+        System.out.println("Unsafe:    " + unsafeCounter + " (likely wrong)");
+
+        Thread worker = new Thread(() -> {
+            while (!flag) { /* spin */ }
+            System.out.println("Worker saw flag=true");
+        });
+        worker.start();
+        Thread.sleep(5);
+        flag = true;
+        worker.join();
+    }
+}`,
+      },
+      {
+        slug: '03-reentrantlock',
+        title: 'ReentrantLock & ReadWriteLock',
+        order: 3,
+        difficulty: 'advanced',
+        tags: ['ReentrantLock', 'ReadWriteLock', 'tryLock', 'Condition', 'deadlock', 'interview-common'],
+        defaultCode: `import java.util.concurrent.locks.*;
+
+public class JavaLabRunner {
+    static final ReentrantLock lock = new ReentrantLock();
+    static int counter = 0;
+    static final ReadWriteLock rwLock = new ReentrantReadWriteLock();
+    static String sharedData = "initial";
+
+    static void safeIncrement() {
+        lock.lock();
+        try { counter++; }
+        finally { lock.unlock(); }
+    }
+
+    static String readData() {
+        rwLock.readLock().lock();
+        try { return sharedData; }
+        finally { rwLock.readLock().unlock(); }
+    }
+
+    static void writeData(String data) {
+        rwLock.writeLock().lock();
+        try { sharedData = data; }
+        finally { rwLock.writeLock().unlock(); }
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        boolean acquired = lock.tryLock();
+        if (acquired) {
+            try { System.out.println("Lock acquired, counter: " + ++counter); }
+            finally { lock.unlock(); }
+        }
+
+        writeData("hello");
+        System.out.println("Read: " + readData());
+        System.out.println("Hold count (unlocked): " + lock.getHoldCount()); // 0
+        System.out.println("Is fair: " + new ReentrantLock(true).isFair());
+    }
+}`,
+      },
+      {
+        slug: '04-atomic-cas',
+        title: 'Atomic Variables & CAS',
+        order: 4,
+        difficulty: 'advanced',
+        tags: ['AtomicInteger', 'AtomicReference', 'CAS', 'LongAdder', 'lock-free', 'interview-common'],
+        defaultCode: `import java.util.concurrent.atomic.*;
+
+public class JavaLabRunner {
+    static AtomicInteger atomicCounter = new AtomicInteger(0);
+    static LongAdder adder = new LongAdder();
+
+    public static void main(String[] args) throws InterruptedException {
+        System.out.println("get: " + atomicCounter.get());
+        System.out.println("getAndIncrement: " + atomicCounter.getAndIncrement()); // 0
+        System.out.println("incrementAndGet: " + atomicCounter.incrementAndGet()); // 2
+        System.out.println("addAndGet(10):   " + atomicCounter.addAndGet(10));     // 12
+
+        boolean success = atomicCounter.compareAndSet(12, 100);
+        System.out.println("CAS(12->100): " + success + ", value: " + atomicCounter.get());
+
+        boolean fail = atomicCounter.compareAndSet(12, 200);
+        System.out.println("CAS(12->200): " + fail + ", value: " + atomicCounter.get());
+
+        AtomicReference<String> ref = new AtomicReference<>("hello");
+        ref.compareAndSet("hello", "world");
+        System.out.println("AtomicReference: " + ref.get());
+
+        Thread[] threads = new Thread[10];
+        for (int i = 0; i < 10; i++) {
+            threads[i] = new Thread(() -> {
+                for (int j = 0; j < 1000; j++) adder.increment();
+            });
+            threads[i].start();
+        }
+        for (Thread t : threads) t.join();
+        System.out.println("LongAdder sum: " + adder.sum()); // 10000
+    }
+}`,
+      },
+      {
+        slug: '05-executor-threadpool',
+        title: 'Executor Framework & Thread Pools',
+        order: 5,
+        difficulty: 'advanced',
+        tags: ['ExecutorService', 'ThreadPoolExecutor', 'Callable', 'Future', 'thread-pool-sizing', 'interview-common'],
+        defaultCode: `import java.util.concurrent.*;
+import java.util.List;
+
+public class JavaLabRunner {
+    public static void main(String[] args) throws InterruptedException, ExecutionException {
+        ExecutorService pool = Executors.newFixedThreadPool(3);
+
+        Future<Integer> future = pool.submit(() -> {
+            Thread.sleep(10);
+            return 42;
+        });
+
+        pool.execute(() -> System.out.println("Running in: " + Thread.currentThread().getName()));
+        System.out.println("Future result: " + future.get());
+
+        List<Callable<String>> tasks = List.of(
+            () -> "task1", () -> "task2", () -> "task3"
+        );
+        List<Future<String>> results = pool.invokeAll(tasks);
+        for (Future<String> r : results) System.out.println("Result: " + r.get());
+
+        pool.shutdown();
+        pool.awaitTermination(5, TimeUnit.SECONDS);
+
+        ThreadPoolExecutor custom = new ThreadPoolExecutor(
+            2, 4, 60, TimeUnit.SECONDS,
+            new ArrayBlockingQueue<>(10),
+            new ThreadPoolExecutor.CallerRunsPolicy()
+        );
+        System.out.println("Core pool size: " + custom.getCorePoolSize());
+        System.out.println("Max pool size:  " + custom.getMaximumPoolSize());
+        custom.shutdown();
+    }
+}`,
+      },
+      {
+        slug: '06-completablefuture',
+        title: 'CompletableFuture & Async Composition',
+        order: 6,
+        difficulty: 'advanced',
+        tags: ['CompletableFuture', 'thenApply', 'thenCompose', 'allOf', 'exceptionally', 'async', 'interview-common'],
+        defaultCode: `import java.util.concurrent.*;
+
+public class JavaLabRunner {
+    static String fetchUser(int id) { return "User-" + id; }
+    static String fetchOrders(String user) { return user + ":orders[A,B,C]"; }
+
+    public static void main(String[] args) throws Exception {
+        // Basic async pipeline
+        String result = CompletableFuture
+            .supplyAsync(() -> fetchUser(42))
+            .thenApply(String::toUpperCase)
+            .thenApply(user -> "Hello, " + user)
+            .get();
+        System.out.println(result);
+
+        // thenCompose — flatMap for futures
+        String composed = CompletableFuture
+            .supplyAsync(() -> fetchUser(1))
+            .thenCompose(user -> CompletableFuture.supplyAsync(() -> fetchOrders(user)))
+            .get();
+        System.out.println("Composed: " + composed);
+
+        // thenCombine — merge two independent futures
+        CompletableFuture<String> f1 = CompletableFuture.supplyAsync(() -> "Hello");
+        CompletableFuture<String> f2 = CompletableFuture.supplyAsync(() -> "World");
+        System.out.println("Combined: " + f1.thenCombine(f2, (a, b) -> a + " " + b).get());
+
+        // allOf — wait for all
+        CompletableFuture.allOf(
+            CompletableFuture.runAsync(() -> System.out.println("Task 1")),
+            CompletableFuture.runAsync(() -> System.out.println("Task 2"))
+        ).get();
+
+        // Error handling
+        String fallback = CompletableFuture
+            .<String>supplyAsync(() -> { throw new RuntimeException("fetch failed"); })
+            .exceptionally(ex -> "fallback: " + ex.getMessage())
+            .get();
+        System.out.println(fallback);
+    }
+}`,
+      },
+      {
+        slug: '07-concurrent-collections',
+        title: 'Concurrent Collections',
+        order: 7,
+        difficulty: 'advanced',
+        tags: ['ConcurrentHashMap', 'BlockingQueue', 'CopyOnWriteArrayList', 'producer-consumer', 'interview-common'],
+        defaultCode: `import java.util.concurrent.*;
+
+public class JavaLabRunner {
+    public static void main(String[] args) throws InterruptedException {
+        // ConcurrentHashMap — atomic compound ops
+        ConcurrentHashMap<String, Integer> map = new ConcurrentHashMap<>();
+        map.put("a", 1);
+        map.putIfAbsent("b", 2);
+        map.compute("a", (k, v) -> v == null ? 1 : v + 10);
+        map.merge("c", 1, Integer::sum);
+        System.out.println("ConcurrentHashMap: " + map);
+
+        // CopyOnWriteArrayList — safe iteration
+        CopyOnWriteArrayList<String> cowList = new CopyOnWriteArrayList<>();
+        cowList.add("a");
+        cowList.add("b");
+        for (String s : cowList) {
+            cowList.add("c"); // safe — iterates snapshot
+            System.out.println("COW iterate: " + s);
+            break;
+        }
+
+        // BlockingQueue — producer-consumer
+        BlockingQueue<Integer> queue = new ArrayBlockingQueue<>(5);
+        Thread producer = new Thread(() -> {
+            try {
+                for (int i = 1; i <= 3; i++) {
+                    queue.put(i);
+                    System.out.println("Produced: " + i);
+                }
+            } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        });
+        Thread consumer = new Thread(() -> {
+            try {
+                for (int i = 0; i < 3; i++) System.out.println("Consumed: " + queue.take());
+            } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        });
+        producer.start(); consumer.start();
+        producer.join();  consumer.join();
+    }
+}`,
+      },
+      {
+        slug: '08-synchronizers',
+        title: 'Synchronizers: CountDownLatch, Semaphore & CyclicBarrier',
+        order: 8,
+        difficulty: 'advanced',
+        tags: ['CountDownLatch', 'CyclicBarrier', 'Semaphore', 'Phaser', 'deadlock', 'interview-common'],
+        defaultCode: `import java.util.concurrent.*;
+
+public class JavaLabRunner {
+    public static void main(String[] args) throws InterruptedException {
+        int N = 3;
+
+        // CountDownLatch — start gate
+        CountDownLatch startGate = new CountDownLatch(1);
+        CountDownLatch endGate   = new CountDownLatch(N);
+
+        for (int i = 0; i < N; i++) {
+            final int id = i;
+            new Thread(() -> {
+                try {
+                    startGate.await();
+                    System.out.println("Thread " + id + " running");
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    endGate.countDown();
+                }
+            }).start();
+        }
+        Thread.sleep(5);
+        System.out.println("GO!");
+        startGate.countDown();
+        endGate.await();
+        System.out.println("All done.");
+
+        // Semaphore — limit concurrency
+        Semaphore sem = new Semaphore(2);
+        ExecutorService pool = Executors.newFixedThreadPool(5);
+        for (int i = 0; i < 5; i++) {
+            final int id = i;
+            pool.submit(() -> {
+                try {
+                    sem.acquire();
+                    System.out.println("Thread " + id + " in critical section");
+                    Thread.sleep(10);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    sem.release();
+                }
+            });
+        }
+        pool.shutdown();
+        pool.awaitTermination(5, TimeUnit.SECONDS);
     }
 }`,
       },
