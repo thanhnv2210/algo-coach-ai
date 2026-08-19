@@ -47,6 +47,80 @@ export const JAVA_CURRICULUM: JavaCategory[] = [
     }
 }`,
       },
+      {
+        slug: '02-core-java-glossary',
+        title: 'Core Java & OOP Terminology — Interview Reference',
+        order: 2,
+        difficulty: 'intermediate',
+        tags: ['glossary', 'OOP', 'SOLID', 'generics', 'immutability', 'exceptions', 'String', 'interview-common'],
+        defaultCode: `import java.util.*;
+
+public class JavaLabRunner {
+    // Immutable class pattern
+    static final class Money {
+        private final int amount;
+        private final String currency;
+        Money(int amount, String currency) {
+            this.amount = amount;
+            this.currency = new String(currency); // defensive copy
+        }
+        public int getAmount() { return amount; }
+        public String getCurrency() { return new String(currency); }
+    }
+
+    // Polymorphism / dynamic dispatch
+    static abstract class Shape { abstract double area(); }
+    static class Circle extends Shape {
+        double r;
+        Circle(double r) { this.r = r; }
+        @Override public double area() { return Math.PI * r * r; }
+    }
+    static class Rectangle extends Shape {
+        double w, h;
+        Rectangle(double w, double h) { this.w = w; this.h = h; }
+        @Override public double area() { return w * h; }
+    }
+
+    // PECS: Producer Extends, Consumer Super
+    static double sumList(List<? extends Number> list) {
+        return list.stream().mapToDouble(Number::doubleValue).sum();
+    }
+
+    // try-with-resources
+    static class Resource implements AutoCloseable {
+        Resource() { System.out.println("Resource opened"); }
+        public void close() { System.out.println("Resource closed"); }
+    }
+
+    public static void main(String[] args) {
+        // Dynamic dispatch — runtime decides which area() to call
+        List<Shape> shapes = List.of(new Circle(3), new Rectangle(4, 5));
+        shapes.forEach(s -> System.out.printf("%s area: %.2f%n",
+            s.getClass().getSimpleName(), s.area()));
+
+        // Generics PECS
+        List<Integer> ints = List.of(1, 2, 3, 4, 5);
+        System.out.println("Sum: " + sumList(ints));
+
+        // Immutable class
+        Money m = new Money(100, "USD");
+        System.out.println("Money: " + m.getAmount() + " " + m.getCurrency());
+
+        // try-with-resources — close() called automatically
+        try (Resource r = new Resource()) {
+            System.out.println("Using resource");
+        }
+
+        // String pool
+        String s1 = "hello";
+        String s2 = "hello";
+        String s3 = new String("hello");
+        System.out.println("s1 == s2 (pool): " + (s1 == s2));       // true
+        System.out.println("s1 == s3 (heap): " + (s1 == s3));       // false
+        System.out.println("s1.equals(s3):   " + s1.equals(s3));    // true
+    }
+}`,
+      },
     ],
   },
   {
@@ -417,6 +491,59 @@ public class JavaLabRunner {
     }
 }`,
       },
+      {
+        slug: '09-collections-glossary',
+        title: 'Collections Terminology — Interview Reference',
+        order: 9,
+        difficulty: 'intermediate',
+        tags: ['glossary', 'HashMap', 'hashCode', 'equals', 'Iterator', 'Comparator', 'complexity', 'interview-common'],
+        defaultCode: `import java.util.*;
+
+public class JavaLabRunner {
+    record Point(int x, int y) {} // records auto-generate equals/hashCode
+
+    public static void main(String[] args) {
+        // Fail-fast iterator — correct removal pattern
+        List<Integer> list = new ArrayList<>(Arrays.asList(1, 2, 3, 4, 5));
+        Iterator<Integer> it = list.iterator();
+        while (it.hasNext()) {
+            if (it.next() % 2 == 0) it.remove(); // safe
+        }
+        System.out.println("After removal: " + list); // [1, 3, 5]
+
+        // HashMap pre-sizing to avoid rehash
+        Map<String, Integer> map = new HashMap<>((int)(1000 / 0.75) + 1);
+        map.put("key", 42);
+        System.out.println("Pre-sized map, no resize for 1000 entries");
+
+        // TreeMap: sorted, no null keys
+        TreeMap<String, Integer> tree = new TreeMap<>();
+        tree.put("banana", 2); tree.put("apple", 1); tree.put("cherry", 3);
+        System.out.println("TreeMap (sorted): " + tree);
+        System.out.println("Ceiling of 'avocado': " + tree.ceilingKey("avocado")); // banana
+
+        // equals/hashCode contract with records
+        Set<Point> points = new HashSet<>();
+        points.add(new Point(1, 2));
+        points.add(new Point(1, 2)); // duplicate — records compare by value
+        System.out.println("Set size (should be 1): " + points.size());
+
+        // List.of — truly immutable
+        List<String> immutable = List.of("a", "b", "c");
+        try {
+            immutable.add("d");
+        } catch (UnsupportedOperationException e) {
+            System.out.println("List.of is immutable: " + e.getClass().getSimpleName());
+        }
+
+        // PriorityQueue — only poll() gives priority order
+        PriorityQueue<Integer> pq = new PriorityQueue<>(List.of(5, 1, 3, 2, 4));
+        System.out.print("PriorityQueue poll order: ");
+        while (!pq.isEmpty()) System.out.print(pq.poll() + " "); // 1 2 3 4 5
+        System.out.println();
+    }
+}`,
+      },
     ],
   },
   {
@@ -601,6 +728,67 @@ public class JavaLabRunner {
         List<Optional<String>> optionals = List.of(present, empty, Optional.of("world"));
         List<String> values = optionals.stream().flatMap(Optional::stream).toList();
         System.out.println("Stream flatMap: " + values);
+    }
+}`,
+      },
+      {
+        slug: '05-streams-glossary',
+        title: 'Streams Terminology — Interview Reference',
+        order: 5,
+        difficulty: 'intermediate',
+        tags: ['glossary', 'Stream', 'map', 'flatMap', 'Optional', 'Collectors', 'lazy', 'parallel', 'interview-common'],
+        defaultCode: `import java.util.*;
+import java.util.stream.*;
+import java.util.function.*;
+
+public class JavaLabRunner {
+    record Person(String name, String dept, int salary) {}
+
+    public static void main(String[] args) {
+        List<Person> people = List.of(
+            new Person("Alice", "Eng", 90000),
+            new Person("Bob",   "Eng", 85000),
+            new Person("Carol", "HR",  70000),
+            new Person("Dave",  "HR",  72000)
+        );
+
+        // map vs flatMap
+        List<String> upper = people.stream()
+            .map(p -> p.name().toUpperCase())
+            .collect(Collectors.toList());
+        System.out.println("map: " + upper);
+
+        List<String> words = List.of("Hello World", "Java Streams");
+        List<String> tokens = words.stream()
+            .flatMap(s -> Arrays.stream(s.split(" ")))
+            .collect(Collectors.toList());
+        System.out.println("flatMap: " + tokens);
+
+        // filter before sorted (stateful op)
+        people.stream()
+            .filter(p -> p.salary() > 75000)
+            .sorted(Comparator.comparingInt(Person::salary))
+            .map(Person::name)
+            .forEach(System.out::println);
+
+        // groupingBy + downstream
+        Map<String, Double> avgByDept = people.stream()
+            .collect(Collectors.groupingBy(Person::dept, Collectors.averagingInt(Person::salary)));
+        System.out.println("Avg salary: " + avgByDept);
+
+        // Optional.flatMap
+        Optional<String> email = Optional.of("alice@example.com");
+        Optional<String> domain = email.flatMap(e -> Optional.of(e.split("@")[1]));
+        System.out.println("Domain: " + domain.orElse("none"));
+
+        // orElse (eager) vs orElseGet (lazy)
+        Optional<String> empty = Optional.empty();
+        System.out.println("orElse: " + empty.orElse("default"));
+        System.out.println("orElseGet: " + empty.orElseGet(() -> "lazy"));
+
+        // infinite stream + limit
+        List<Double> randoms = Stream.generate(Math::random).limit(5).collect(Collectors.toList());
+        System.out.println("5 randoms: " + randoms.size());
     }
 }`,
       },
@@ -962,6 +1150,70 @@ public class JavaLabRunner {
     }
 }`,
       },
+      {
+        slug: '09-concurrency-glossary',
+        title: 'Concurrency Terminology — Interview Reference',
+        order: 9,
+        difficulty: 'advanced',
+        tags: ['glossary', 'JMM', 'happens-before', 'CAS', 'deadlock', 'thread-pool', 'CompletableFuture', 'interview-common'],
+        defaultCode: `import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
+import java.util.concurrent.locks.*;
+
+public class JavaLabRunner {
+    static final ReentrantLock mutex = new ReentrantLock(true); // fair mutex
+    static final AtomicInteger casCounter = new AtomicInteger(0);
+    static final Semaphore permits = new Semaphore(2);
+    static volatile boolean stop = false;
+
+    public static void main(String[] args) throws Exception {
+        // CAS — compare-and-swap
+        boolean swapped = casCounter.compareAndSet(0, 42);
+        System.out.println("CAS succeeded: " + swapped + ", value: " + casCounter.get());
+
+        // Mutex (fair ReentrantLock) — reentrant
+        mutex.lock();
+        try {
+            System.out.println("Hold count: " + mutex.getHoldCount()); // 1
+            mutex.lock();
+            try { System.out.println("Hold count (reentry): " + mutex.getHoldCount()); } // 2
+            finally { mutex.unlock(); }
+        } finally { mutex.unlock(); }
+
+        // Semaphore + CountDownLatch
+        ExecutorService pool = Executors.newFixedThreadPool(4);
+        CountDownLatch done = new CountDownLatch(4);
+        for (int i = 0; i < 4; i++) {
+            final int id = i;
+            pool.submit(() -> {
+                try {
+                    permits.acquire();
+                    System.out.println("Thread " + id + " acquired permit");
+                    Thread.sleep(20);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    permits.release();
+                    done.countDown();
+                }
+            });
+        }
+        done.await();
+        System.out.println("All done (CountDownLatch released)");
+
+        // volatile happens-before
+        Thread worker = new Thread(() -> {
+            while (!stop) { /* spin */ }
+            System.out.println("Worker saw stop=true (volatile visibility)");
+        });
+        worker.start();
+        Thread.sleep(5);
+        stop = true;
+        worker.join();
+        pool.shutdown();
+    }
+}`,
+      },
     ],
   },
   {
@@ -992,6 +1244,50 @@ public class JavaLabRunner {
         // ClassLoader hierarchy
         System.out.println("\\nClassLoader: " + JavaLabRunner.class.getClassLoader());
         System.out.println("Parent:      " + JavaLabRunner.class.getClassLoader().getParent());
+    }
+}`,
+      },
+      {
+        slug: '02-jvm-glossary',
+        title: 'JVM Internals & Performance Terminology — Interview Reference',
+        order: 2,
+        difficulty: 'advanced',
+        tags: ['glossary', 'JVM', 'GC', 'G1GC', 'JIT', 'ClassLoader', 'heap', 'metaspace', 'interview-common'],
+        defaultCode: `import java.lang.ref.*;
+
+public class JavaLabRunner {
+    public static void main(String[] args) throws InterruptedException {
+        // Runtime memory inspection
+        Runtime rt = Runtime.getRuntime();
+        System.out.println("Max memory (Xmx):  " + rt.maxMemory()   / (1024*1024) + " MB");
+        System.out.println("Total memory:      " + rt.totalMemory()  / (1024*1024) + " MB");
+        System.out.println("Free memory:       " + rt.freeMemory()   / (1024*1024) + " MB");
+        System.out.println("CPU cores:         " + rt.availableProcessors());
+
+        // ClassLoader hierarchy (parent delegation model)
+        ClassLoader app  = JavaLabRunner.class.getClassLoader();
+        ClassLoader plat = app.getParent();
+        ClassLoader boot = plat != null ? plat.getParent() : null;
+        System.out.println("\\nApp ClassLoader:      " + app);
+        System.out.println("Platform ClassLoader: " + plat);
+        System.out.println("Bootstrap loader:     " + boot); // null — native
+
+        // Strong vs Weak reference
+        Object strong = new Object();                    // never GC'd while reachable
+        WeakReference<Object> weak = new WeakReference<>(new Object());
+        SoftReference<Object> soft = new SoftReference<>(new Object());
+
+        System.out.println("\\nWeak ref before GC: " + weak.get());
+        System.gc(); // suggestion only — not guaranteed
+        Thread.sleep(50);
+        System.out.println("Weak ref after GC:  " + weak.get()); // likely null
+
+        // String pool vs heap
+        String pooled = "hello";
+        String heap   = new String("hello");
+        String intern = heap.intern();
+        System.out.println("\\npooled == intern: " + (pooled == intern)); // true
+        System.out.println("pooled == heap:   " + (pooled == heap));     // false
     }
 }`,
       },
@@ -1031,6 +1327,91 @@ public class JavaLabRunner {
         LazyHolder h1 = LazyHolder.getInstance();
         LazyHolder h2 = LazyHolder.getInstance();
         System.out.println("LazyHolder same: " + (h1 == h2));
+    }
+}`,
+      },
+      {
+        slug: '02-design-patterns-glossary',
+        title: 'Design Patterns Terminology — Interview Reference',
+        order: 2,
+        difficulty: 'advanced',
+        tags: ['glossary', 'Singleton', 'Builder', 'Strategy', 'Observer', 'Proxy', 'Decorator', 'GoF', 'SOLID', 'interview-common'],
+        defaultCode: `import java.util.*;
+
+public class JavaLabRunner {
+    // Builder pattern
+    static final class HttpRequest {
+        final String method, url, body;
+        final Map<String, String> headers;
+        private HttpRequest(Builder b) {
+            this.method = b.method; this.url = b.url;
+            this.body = b.body; this.headers = Map.copyOf(b.headers);
+        }
+        @Override public String toString() {
+            return method + " " + url + " body=" + body + " headers=" + headers;
+        }
+        static class Builder {
+            String method = "GET", url, body;
+            Map<String, String> headers = new HashMap<>();
+            Builder url(String url) { this.url = url; return this; }
+            Builder method(String m) { this.method = m; return this; }
+            Builder body(String b) { this.body = b; return this; }
+            Builder header(String k, String v) { headers.put(k, v); return this; }
+            HttpRequest build() { return new HttpRequest(this); }
+        }
+    }
+
+    // Strategy pattern
+    interface SortStrategy { void sort(int[] arr); }
+    static class BubbleSort implements SortStrategy {
+        public void sort(int[] arr) { /* simplified */ Arrays.sort(arr); System.out.println("BubbleSort used"); }
+    }
+    static class QuickSort implements SortStrategy {
+        public void sort(int[] arr) { Arrays.sort(arr); System.out.println("QuickSort used"); }
+    }
+    static class Sorter {
+        private SortStrategy strategy;
+        Sorter(SortStrategy s) { this.strategy = s; }
+        void setStrategy(SortStrategy s) { this.strategy = s; }
+        void sort(int[] arr) { strategy.sort(arr); }
+    }
+
+    // Decorator pattern
+    interface TextProcessor { String process(String text); }
+    static class PlainText implements TextProcessor {
+        public String process(String t) { return t; }
+    }
+    static class UpperCaseDecorator implements TextProcessor {
+        private final TextProcessor wrapped;
+        UpperCaseDecorator(TextProcessor t) { this.wrapped = t; }
+        public String process(String t) { return wrapped.process(t).toUpperCase(); }
+    }
+    static class TrimDecorator implements TextProcessor {
+        private final TextProcessor wrapped;
+        TrimDecorator(TextProcessor t) { this.wrapped = t; }
+        public String process(String t) { return wrapped.process(t).trim(); }
+    }
+
+    public static void main(String[] args) {
+        // Builder
+        HttpRequest req = new HttpRequest.Builder()
+            .url("https://api.example.com/users")
+            .method("POST")
+            .body("{\\"name\\":\\"Alice\\"}")
+            .header("Content-Type", "application/json")
+            .build();
+        System.out.println("Request: " + req);
+
+        // Strategy — swap algorithm at runtime
+        Sorter sorter = new Sorter(new BubbleSort());
+        int[] data = {5, 2, 8, 1};
+        sorter.sort(data);
+        sorter.setStrategy(new QuickSort());
+        sorter.sort(data);
+
+        // Decorator — compose behaviours
+        TextProcessor pipeline = new UpperCaseDecorator(new TrimDecorator(new PlainText()));
+        System.out.println("Decorated: " + pipeline.process("  hello world  "));
     }
 }`,
       },
@@ -1587,6 +1968,92 @@ public class JavaLabRunner {
     }
 }`,
       },
+      {
+        slug: '09-spring-glossary',
+        title: 'Spring Boot Terminology — Interview Reference',
+        order: 9,
+        difficulty: 'advanced',
+        tags: ['glossary', 'Spring', 'IoC', 'DI', 'AOP', 'Transactional', 'bean-scope', 'auto-configuration', 'interview-common'],
+        defaultCode: `import java.util.*;
+
+// Simulates core Spring concepts without a Spring context.
+public class JavaLabRunner {
+    // IoC / DI — constructor injection (preferred over field injection)
+    interface NotificationService { void send(String msg); }
+    static class EmailService implements NotificationService {
+        public void send(String msg) { System.out.println("Email: " + msg); }
+    }
+    static class OrderService {
+        private final NotificationService notifier; // injected via constructor
+        OrderService(NotificationService n) { this.notifier = n; }
+        void placeOrder(String item) {
+            System.out.println("Order: " + item);
+            notifier.send("Order placed: " + item);
+        }
+    }
+
+    // Transaction simulation (REQUIRED vs REQUIRES_NEW propagation)
+    static class TxManager {
+        private boolean active = false;
+        void begin()    { active = true;  System.out.println("[TX] BEGIN"); }
+        void commit()   { active = false; System.out.println("[TX] COMMIT"); }
+        void rollback() { active = false; System.out.println("[TX] ROLLBACK"); }
+        boolean isActive() { return active; }
+    }
+    static TxManager tm = new TxManager();
+
+    // REQUIRED: join existing TX or create new
+    static void required(Runnable work) {
+        boolean started = !tm.isActive();
+        if (started) tm.begin();
+        try { work.run(); if (started) tm.commit(); }
+        catch (RuntimeException e) { if (started) tm.rollback(); throw e; }
+    }
+
+    // REQUIRES_NEW: always new TX, suspends outer
+    static void requiresNew(Runnable work) {
+        System.out.println("[TX] Suspending outer, starting new TX");
+        tm.begin();
+        try { work.run(); tm.commit(); }
+        catch (RuntimeException e) { tm.rollback(); throw e; }
+    }
+
+    // Self-invocation pitfall — @Transactional on this.method() is ignored
+    static class PaymentService {
+        void processPayment(int amount) {
+            System.out.println("[Service] processPayment — proxy applies @Transactional");
+            validate(amount); // PITFALL: this.validate() bypasses proxy!
+        }
+        void validate(int amount) {
+            System.out.println("[Service] validate — @Transactional silently ignored here");
+        }
+    }
+
+    public static void main(String[] args) {
+        // Constructor DI
+        OrderService svc = new OrderService(new EmailService());
+        svc.placeOrder("Laptop");
+
+        // Transaction propagation
+        System.out.println("\\n=== REQUIRED propagation ===");
+        required(() -> {
+            System.out.println("  Outer work");
+            required(() -> System.out.println("  Inner work (joins outer TX)"));
+        });
+
+        System.out.println("\\n=== REQUIRES_NEW propagation ===");
+        required(() -> {
+            System.out.println("  Outer work");
+            requiresNew(() -> System.out.println("  Audit log (own TX)"));
+            System.out.println("  Outer continues");
+        });
+
+        // Self-invocation pitfall
+        System.out.println("\\n=== Self-invocation pitfall ===");
+        new PaymentService().processPayment(100);
+    }
+}`,
+      },
     ],
   },
   {
@@ -1636,6 +2103,81 @@ public class JavaLabRunner {
 
         int[] nums = {2, 1, 5, 1, 3, 2};
         System.out.println("Max sum subarray k=3: " + maxSumSubarray(nums, 3)); // 9
+    }
+}`,
+      },
+      {
+        slug: '02-interview-patterns-glossary',
+        title: 'Interview Coding Patterns — Reference Glossary',
+        order: 2,
+        difficulty: 'intermediate',
+        tags: ['glossary', 'two-pointers', 'sliding-window', 'binary-search', 'DP', 'BFS', 'DFS', 'backtracking', 'Union-Find', 'interview-common'],
+        defaultCode: `import java.util.*;
+
+public class JavaLabRunner {
+    // Sliding window — longest substring without repeating characters
+    static int lengthOfLongestSubstring(String s) {
+        Map<Character, Integer> last = new HashMap<>();
+        int max = 0, left = 0;
+        for (int right = 0; right < s.length(); right++) {
+            char c = s.charAt(right);
+            if (last.containsKey(c) && last.get(c) >= left) {
+                left = last.get(c) + 1; // shrink window
+            }
+            last.put(c, right);
+            max = Math.max(max, right - left + 1);
+        }
+        return max;
+    }
+
+    // Monotonic stack — next greater element
+    static int[] nextGreater(int[] nums) {
+        int n = nums.length;
+        int[] result = new int[n];
+        Arrays.fill(result, -1);
+        Deque<Integer> stack = new ArrayDeque<>(); // stores indices
+        for (int i = 0; i < n; i++) {
+            while (!stack.isEmpty() && nums[stack.peek()] < nums[i]) {
+                result[stack.pop()] = nums[i];
+            }
+            stack.push(i);
+        }
+        return result;
+    }
+
+    // Binary search on answer — minimum capacity to ship all packages in D days
+    static int shipWithinDays(int[] weights, int days) {
+        int lo = Arrays.stream(weights).max().getAsInt();
+        int hi = Arrays.stream(weights).sum();
+        while (lo < hi) {
+            int mid = lo + (hi - lo) / 2;
+            if (canShip(weights, days, mid)) hi = mid;
+            else lo = mid + 1;
+        }
+        return lo;
+    }
+    static boolean canShip(int[] weights, int days, int capacity) {
+        int daysNeeded = 1, current = 0;
+        for (int w : weights) {
+            if (current + w > capacity) { daysNeeded++; current = 0; }
+            current += w;
+        }
+        return daysNeeded <= days;
+    }
+
+    public static void main(String[] args) {
+        // Sliding window
+        System.out.println("Longest substring 'abcabcbb': " + lengthOfLongestSubstring("abcabcbb")); // 3
+        System.out.println("Longest substring 'pwwkew':   " + lengthOfLongestSubstring("pwwkew"));   // 3
+
+        // Monotonic stack
+        int[] nums = {2, 1, 2, 4, 3};
+        System.out.println("Next greater: " + Arrays.toString(nextGreater(nums))); // [4,2,4,-1,-1]
+
+        // Binary search on answer
+        int[] weights = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+        System.out.println("Min ship capacity (10 days): " + shipWithinDays(weights, 10)); // 10
+        System.out.println("Min ship capacity (5 days):  " + shipWithinDays(weights, 5));  // 15
     }
 }`,
       },
