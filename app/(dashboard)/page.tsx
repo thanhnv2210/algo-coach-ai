@@ -23,16 +23,16 @@ export default async function DashboardPage() {
   }))
 
   return (
-    <div className="px-8 py-8 max-w-5xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+    <div className="px-4 sm:px-6 md:px-8 py-6 md:py-8 max-w-5xl mx-auto">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Dashboard</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {stats.solved} of {stats.total} questions solved across {stats.topicsCovered} topics.
         </p>
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6 md:mb-8">
         <StatsCard label="Solved" value={stats.solved} sub={`of ${stats.total} total`} accent />
         <StatsCard label="Mastered" value={stats.mastered} />
         <StatsCard label="In Progress" value={stats.inProgress} />

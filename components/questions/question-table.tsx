@@ -42,9 +42,9 @@ export function QuestionTable({ initialQuestions }: { initialQuestions: Question
           <tr className="border-b border-border">
             <th className="text-left py-3 pr-4 font-medium text-muted-foreground">Title</th>
             <th className="text-left py-3 pr-4 font-medium text-muted-foreground w-24">Difficulty</th>
-            <th className="text-left py-3 pr-4 font-medium text-muted-foreground">Notes</th>
+            <th className="hidden sm:table-cell text-left py-3 pr-4 font-medium text-muted-foreground">Notes</th>
             <th className="text-left py-3 font-medium text-muted-foreground w-36">Status</th>
-            <th className="py-3 w-10" />
+            <th className="hidden sm:table-cell py-3 w-10" />
           </tr>
         </thead>
         <tbody>
@@ -66,7 +66,7 @@ export function QuestionTable({ initialQuestions }: { initialQuestions: Question
                   {q.difficulty}
                 </span>
               </td>
-              <td className="py-3 pr-4 text-muted-foreground text-xs">{q.notes ?? "—"}</td>
+              <td className="hidden sm:table-cell py-3 pr-4 text-muted-foreground text-xs">{q.notes ?? "—"}</td>
               <td className="py-3">
                 <StatusSelect
                   id={q.id}
@@ -74,7 +74,7 @@ export function QuestionTable({ initialQuestions }: { initialQuestions: Question
                   onChange={handleStatusChange}
                 />
               </td>
-              <td className="py-3 text-right">
+              <td className="hidden sm:table-cell py-3 text-right">
                 <Link
                   href={`/practice/${q.id}`}
                   className="inline-flex items-center justify-center size-7 rounded text-faint hover:text-primary hover:bg-primary/10 transition-colors"

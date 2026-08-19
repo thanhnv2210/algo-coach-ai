@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { CheckCircle2, Circle, Clock, Sparkles } from "lucide-react"
+import Link from "next/link"
+import { CheckCircle2, Circle, Clock, Sparkles, ChevronLeft } from "lucide-react"
 import { LessonContent } from "./LessonContent"
 import { LessonNav } from "./LessonNav"
 import { CodeEditor } from "./CodeEditor"
@@ -111,13 +112,30 @@ export function LessonLayout({ category, lesson, markdownContent, initialStatus 
 
   return (
     <div className="flex h-full overflow-hidden">
-      {/* Left: lesson nav sidebar */}
+      {/* Lesson nav sidebar — desktop only */}
       <LessonNav category={category} currentLesson={lesson} currentStatus={status} />
 
-      {/* Right: two-pane content */}
-      <div className="flex flex-1 overflow-hidden">
+      {/* Main content area */}
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        {/* Mobile breadcrumb — hidden on lg+ (sidebar handles navigation there) */}
+        <div className="flex lg:hidden items-center gap-2 px-4 py-2 border-b border-border bg-card shrink-0 text-xs">
+          <Link
+            href="/java-lab"
+            className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronLeft className="size-3" />
+            Java Lab
+          </Link>
+          <span className="text-faint">/</span>
+          <span className="text-muted-foreground truncate">{category.title}</span>
+          <span className="text-faint">/</span>
+          <span className="text-foreground font-medium truncate">{lesson.title}</span>
+        </div>
+
+        {/* Two-pane content — stacked on mobile, side-by-side on lg+ */}
+        <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
         {/* Lesson doc — left pane */}
-        <div className="flex flex-col w-1/2 border-r border-border overflow-y-auto">
+        <div className="flex flex-col w-full lg:w-1/2 border-b lg:border-b-0 lg:border-r border-border overflow-y-auto">
           <div className="px-6 py-4 border-b border-border shrink-0">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
@@ -165,7 +183,7 @@ export function LessonLayout({ category, lesson, markdownContent, initialStatus 
         </div>
 
         {/* Editor + output — right pane */}
-        <div className="flex flex-col w-1/2 overflow-hidden">
+        <div className="flex flex-col w-full lg:w-1/2 overflow-hidden">
           <div className="flex-1 flex flex-col gap-3 p-4 overflow-y-auto">
             <CodeEditor value={code} onChange={setCode} height="300px" />
 
@@ -198,7 +216,8 @@ export function LessonLayout({ category, lesson, markdownContent, initialStatus 
             )}
           </div>
         </div>
-      </div>
+        </div>{/* end two-pane flex row */}
+      </div>{/* end main content area */}
     </div>
   )
 }

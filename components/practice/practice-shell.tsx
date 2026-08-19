@@ -174,9 +174,9 @@ export function PracticeShell({ question }: { question: Question }) {
       </div>
 
       {/* Body */}
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-col md:flex-row flex-1 min-h-0">
         {/* Left — editor */}
-        <div className="flex flex-col flex-1 min-w-0 border-r border-border">
+        <div className="flex flex-col flex-1 min-w-0 border-b md:border-b-0 md:border-r border-border">
           {/* Editor toolbar */}
           <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-card/50 shrink-0">
             <div className="flex gap-1">
@@ -226,7 +226,7 @@ export function PracticeShell({ question }: { question: Question }) {
         </div>
 
         {/* Right — info + output/review */}
-        <div className="w-96 shrink-0 flex flex-col min-h-0">
+        <div className="w-full md:w-96 shrink-0 flex flex-col min-h-0">
           {/* Problem notes */}
           {question.notes && (
             <div className="px-4 py-3 border-b border-border shrink-0">

@@ -34,7 +34,7 @@ export function Sidebar() {
   const { fontSize, setFontSize } = useTheme()
 
   return (
-    <aside className="w-56 shrink-0 border-r border-border bg-card flex flex-col h-screen sticky top-0">
+    <aside className="hidden md:flex md:flex-col w-56 shrink-0 border-r border-border bg-card h-screen sticky top-0">
       {/* Logo */}
       <div className="px-5 py-4 border-b border-border">
         <div className="flex items-center gap-2">

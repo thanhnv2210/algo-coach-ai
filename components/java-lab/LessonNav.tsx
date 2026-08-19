@@ -31,7 +31,7 @@ export function LessonNav({ category, currentLesson, currentStatus = "not_starte
   }
 
   return (
-    <aside className="w-56 shrink-0 flex flex-col border-r border-border h-full overflow-y-auto">
+    <aside className="hidden lg:flex lg:flex-col w-56 shrink-0 border-r border-border h-full overflow-y-auto">
       {/* Category header */}
       <div className="px-4 py-3 border-b border-border">
         <Link
