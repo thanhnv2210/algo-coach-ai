@@ -3014,6 +3014,124 @@ public class JavaLabRunner {
 }`,
       },
       {
+        slug: '13-streams-architect-guide',
+        title: 'Collections, Optional & Streams — Architect\'s Big Data Guide',
+        order: 13,
+        difficulty: 'advanced',
+        tags: ['streams', 'collections', 'Optional', 'flatMap', 'parallel-stream', 'big-data', 'top-N', 'PriorityQueue', 'interview-common'],
+        defaultCode: `import java.util.*;
+import java.util.stream.*;
+import java.util.function.*;
+
+public class JavaLabRunner {
+    record Employee(String name, String dept, int salary) {}
+    record Order(String id, List<String> productIds) {}
+
+    public static void main(String[] args) {
+        List<Employee> employees = List.of(
+            new Employee("Alice",   "TECH",    120_000),
+            new Employee("Bob",     "TECH",     95_000),
+            new Employee("Charlie", "FINANCE",  110_000),
+            new Employee("Diana",   "TECH",    135_000),
+            new Employee("Eve",     "FINANCE",  88_000),
+            new Employee("Frank",   "TECH",    102_000),
+            new Employee("Grace",   "FINANCE",  145_000)
+        );
+
+        // ── Top 3 highest-paid (sorted + limit) ──
+        System.out.println("=== Top 3 highest paid ===");
+        employees.stream()
+            .sorted(Comparator.comparingInt(Employee::salary).reversed())
+            .limit(3)
+            .forEach(e -> System.out.printf("  %-10s %,d%n", e.name(), e.salary()));
+
+        // ── Top 3 via min-heap (big data approach) ──
+        System.out.println("\\n=== Top 3 via min-heap (O(n log 3) space) ===");
+        PriorityQueue<Employee> heap = new PriorityQueue<>(Comparator.comparingInt(Employee::salary));
+        for (Employee e : employees) {
+            heap.offer(e);
+            if (heap.size() > 3) heap.poll();
+        }
+        List<Employee> top3 = new ArrayList<>(heap);
+        top3.sort(Comparator.comparingInt(Employee::salary).reversed());
+        top3.forEach(e -> System.out.printf("  %-10s %,d%n", e.name(), e.salary()));
+
+        // ── Top 2 per department ──
+        System.out.println("\\n=== Top 2 per department ===");
+        employees.stream()
+            .collect(Collectors.groupingBy(Employee::dept,
+                Collectors.collectingAndThen(Collectors.toList(),
+                    list -> list.stream()
+                        .sorted(Comparator.comparingInt(Employee::salary).reversed())
+                        .limit(2).collect(Collectors.toList()))))
+            .forEach((dept, top) -> {
+                System.out.println("  " + dept + ":");
+                top.forEach(e -> System.out.printf("    %-10s %,d%n", e.name(), e.salary()));
+            });
+
+        // ── At-least-3 check (short-circuit) ──
+        System.out.println("\\n=== At least 3 in TECH? ===");
+        long count = employees.stream()
+            .filter(e -> "TECH".equals(e.dept()))
+            .limit(3).count();
+        System.out.println("  " + (count >= 3 ? "YES" : "NO"));
+
+        // ── flatMap: orders → productIds frequency ──
+        System.out.println("\\n=== Products in ≥2 orders ===");
+        List<Order> orders = List.of(
+            new Order("O1", List.of("P1", "P2", "P3")),
+            new Order("O2", List.of("P1", "P3", "P4")),
+            new Order("O3", List.of("P2", "P3", "P5"))
+        );
+        orders.stream()
+            .flatMap(o -> o.productIds().stream())
+            .collect(Collectors.groupingBy(id -> id, Collectors.counting()))
+            .entrySet().stream()
+            .filter(e -> e.getValue() >= 2)
+            .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+            .forEach(e -> System.out.println("  " + e.getKey() + " → " + e.getValue() + " orders"));
+
+        // ── IntSummaryStatistics (single pass, no boxing) ──
+        System.out.println("\\n=== Salary stats (single pass, no boxing) ===");
+        IntSummaryStatistics stats = employees.stream()
+            .mapToInt(Employee::salary)
+            .summaryStatistics();
+        System.out.printf("  min=%,d  max=%,d  avg=%,.0f  count=%d%n",
+            stats.getMin(), stats.getMax(), stats.getAverage(), stats.getCount());
+
+        // ── Optional flatMap chain ──
+        System.out.println("\\n=== Optional flatMap chain ===");
+        Optional<String> city = Optional.of("  New York  ")
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .map(String::toUpperCase);
+        city.ifPresentOrElse(
+            c -> System.out.println("  City: " + c),
+            () -> System.out.println("  No city")
+        );
+
+        // ── orElse vs orElseGet ──
+        System.out.println("\\n=== orElse vs orElseGet ===");
+        Optional<String> empty = Optional.empty();
+        // orElse: default expression always evaluates
+        String a = empty.orElse("default-eager");
+        // orElseGet: lazy — only calls supplier if empty
+        String b = empty.orElseGet(() -> "default-lazy");
+        System.out.println("  orElse:    " + a);
+        System.out.println("  orElseGet: " + b);
+
+        // ── peek for debug logging ──
+        System.out.println("\\n=== peek for debug ===");
+        employees.stream()
+            .peek(e -> System.out.println("  [INPUT] " + e.name()))
+            .filter(e -> e.salary() > 100_000)
+            .peek(e -> System.out.println("  [PASSED] " + e.name()))
+            .limit(2)
+            .forEach(e -> System.out.println("  [RESULT] " + e.name()));
+    }
+}`,
+      },
+      {
         slug: '02-interview-patterns-glossary',
         title: 'Interview Coding Patterns — Reference Glossary',
         order: 2,
