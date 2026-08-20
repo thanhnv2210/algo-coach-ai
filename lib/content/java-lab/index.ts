@@ -2671,6 +2671,349 @@ public class JavaLabRunner {
 }`,
       },
       {
+        slug: '08-sb-exception-handling',
+        title: 'Spring Boot: Exception Handling + Dynatrace Alerting',
+        order: 8,
+        difficulty: 'advanced',
+        tags: ['spring-boot', 'exception-handling', 'ControllerAdvice', 'dynatrace', 'observability', 'financial'],
+        defaultCode: `import java.time.Instant;
+
+public class JavaLabRunner {
+    // Demonstrate PII masking + log level strategy for financial APIs
+    static String mask(String value) {
+        if (value == null || value.length() < 4) return "****";
+        return "*".repeat(value.length() - 4) + value.substring(value.length() - 4);
+    }
+
+    enum AlertSeverity { INFO, HIGH, CRITICAL }
+
+    static void simulateMilestoneLog(String txnId, String milestone, boolean failed) {
+        if (failed) {
+            System.err.println("ERROR [MILESTONE][" + milestone + "] txnId=" + txnId + " FAILED");
+            System.err.println("  → Dynatrace event: ERROR_EVENT pushed");
+        } else {
+            System.out.println("INFO  [MILESTONE][" + milestone + "] txnId=" + txnId + " OK");
+        }
+    }
+
+    public static void main(String[] args) {
+        String accountNumber = "1234567890";
+        System.out.println("Masked account: " + mask(accountNumber)); // ******7890
+
+        String txnId = "TXN-2025-001";
+        simulateMilestoneLog(txnId, "AML_SCAN",    false);
+        simulateMilestoneLog(txnId, "FORTER_CHECK", false);
+        simulateMilestoneLog(txnId, "FUND_PULL",   false);
+        simulateMilestoneLog(txnId, "THIRD_PARTY", true); // triggers Dynatrace alert
+    }
+}`,
+      },
+      {
+        slug: '09-sb-saga-orchestration',
+        title: 'Spring Boot: Saga Orchestration — Remittance Flow',
+        order: 9,
+        difficulty: 'advanced',
+        tags: ['spring-boot', 'saga', 'orchestration', 'state-machine', 'compensation', 'remittance', 'financial'],
+        defaultCode: `import java.util.*;
+
+public class JavaLabRunner {
+    enum TxnStatus {
+        PENDING, AML_SCANNING, FORTER_CHECKING, FUND_PULLING,
+        REMITTANCE_IN_PROGRESS, CALLBACK_PENDING, COMPLETED,
+        COMPENSATING, REFUND_INITIATED, COMPENSATE_FAILED, FAILED
+    }
+
+    static class Transaction {
+        String id;
+        TxnStatus status = TxnStatus.PENDING;
+        String fundPullRef;
+        List<String> history = new ArrayList<>();
+
+        void transition(TxnStatus next) {
+            System.out.printf("  [SAGA][%s] %s → %s%n", id, status, next);
+            history.add(status + " → " + next);
+            status = next;
+        }
+    }
+
+    static Transaction simulateSaga(boolean thirdPartyFails) {
+        Transaction txn = new Transaction();
+        txn.id = "TXN-001";
+
+        try {
+            txn.transition(TxnStatus.AML_SCANNING);
+            System.out.println("  AML: APPROVED");
+
+            txn.transition(TxnStatus.FORTER_CHECKING);
+            System.out.println("  Forter: APPROVED");
+
+            txn.transition(TxnStatus.FUND_PULLING);
+            txn.fundPullRef = "PULL-REF-999"; // fund successfully pulled
+            System.out.println("  Fund pulled: " + txn.fundPullRef);
+
+            txn.transition(TxnStatus.REMITTANCE_IN_PROGRESS);
+            if (thirdPartyFails) throw new RuntimeException("Provider timeout");
+
+            txn.transition(TxnStatus.CALLBACK_PENDING);
+            txn.transition(TxnStatus.COMPLETED);
+
+        } catch (Exception ex) {
+            System.err.println("  FAILED: " + ex.getMessage() + " — initiating compensation");
+            txn.transition(TxnStatus.COMPENSATING);
+            if (txn.fundPullRef != null) {
+                System.out.println("  Refunding: " + txn.fundPullRef);
+                txn.transition(TxnStatus.REFUND_INITIATED);
+            }
+            txn.transition(TxnStatus.FAILED);
+        }
+        return txn;
+    }
+
+    public static void main(String[] args) {
+        System.out.println("=== Happy path ===");
+        Transaction happy = simulateSaga(false);
+        System.out.println("Final: " + happy.status);
+
+        System.out.println("\\n=== Third-party failure (compensation) ===");
+        Transaction failed = simulateSaga(true);
+        System.out.println("Final: " + failed.status);
+        System.out.println("Journey: " + failed.history);
+    }
+}`,
+      },
+      {
+        slug: '10-sb-api-versioning',
+        title: 'Spring Boot: API Versioning — Fixing the Single-Endpoint Trap',
+        order: 10,
+        difficulty: 'intermediate',
+        tags: ['spring-boot', 'api-versioning', 'backward-compatibility', 'mobile', 'financial'],
+        defaultCode: `import java.util.*;
+import java.math.BigDecimal;
+
+public class JavaLabRunner {
+    // Simulate the request mapper delegation pattern
+    // (avoids if-version branches inside controllers)
+
+    record RemittanceCommand(BigDecimal amount, String beneficiaryId, String beneficiaryName) {}
+
+    interface RequestMapper {
+        int version();
+        RemittanceCommand toCommand(Map<String, Object> raw);
+    }
+
+    // V1: amount is String, flat beneficiaryId
+    static class MapperV1 implements RequestMapper {
+        public int version() { return 1; }
+        public RemittanceCommand toCommand(Map<String, Object> raw) {
+            return new RemittanceCommand(
+                new BigDecimal(raw.get("amount").toString()),
+                (String) raw.get("beneficiaryId"),
+                "Unknown" // v1 didn't have beneficiary name
+            );
+        }
+    }
+
+    // V2: amount is Number, nested beneficiary object
+    @SuppressWarnings("unchecked")
+    static class MapperV2 implements RequestMapper {
+        public int version() { return 2; }
+        public RemittanceCommand toCommand(Map<String, Object> raw) {
+            Map<String, Object> b = (Map<String, Object>) raw.get("beneficiary");
+            return new RemittanceCommand(
+                new BigDecimal(raw.get("amount").toString()),
+                (String) b.get("id"),
+                (String) b.get("name")
+            );
+        }
+    }
+
+    static class RequestMapperRegistry {
+        private final Map<Integer, RequestMapper> mappers = new HashMap<>();
+        void register(RequestMapper m) { mappers.put(m.version(), m); }
+        RemittanceCommand map(int version, Map<String, Object> raw) {
+            return mappers.getOrDefault(version, mappers.get(2)).toCommand(raw);
+        }
+    }
+
+    public static void main(String[] args) {
+        RequestMapperRegistry registry = new RequestMapperRegistry();
+        registry.register(new MapperV1());
+        registry.register(new MapperV2());
+
+        // Simulate v1 mobile request
+        Map<String, Object> v1Request = Map.of("amount", "150.00", "beneficiaryId", "BEN-001");
+        RemittanceCommand cmd1 = registry.map(1, v1Request);
+        System.out.println("V1 mapped: " + cmd1);
+
+        // Simulate v2 mobile request
+        Map<String, Object> v2Request = Map.of(
+            "amount", 150.00,
+            "beneficiary", Map.of("id", "BEN-001", "name", "John Doe")
+        );
+        RemittanceCommand cmd2 = registry.map(2, v2Request);
+        System.out.println("V2 mapped: " + cmd2);
+
+        System.out.println("Same beneficiaryId: " + cmd1.beneficiaryId().equals(cmd2.beneficiaryId()));
+    }
+}`,
+      },
+      {
+        slug: '11-sb-async-queue-flow',
+        title: 'Spring Boot: Async Queue + Callback — Send Money Journey',
+        order: 11,
+        difficulty: 'advanced',
+        tags: ['spring-boot', 'kafka', 'async', 'callback', 'saga', 'queue', 'remittance', 'financial'],
+        defaultCode: `import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReference;
+
+public class JavaLabRunner {
+    enum TxnStatus { PENDING, AML_SCANNING, FUND_PULLING, CALLBACK_PENDING, COMPLETED, FAILED }
+
+    static class Transaction {
+        final String id;
+        final AtomicReference<TxnStatus> status = new AtomicReference<>(TxnStatus.PENDING);
+        final List<String> journey = Collections.synchronizedList(new ArrayList<>());
+
+        Transaction(String id) { this.id = id; }
+
+        void transition(TxnStatus next) {
+            TxnStatus prev = status.getAndSet(next);
+            String step = prev + " → " + next;
+            journey.add(step);
+            System.out.println("  [" + id + "] " + step);
+        }
+    }
+
+    // Simulate async processing (mimics Kafka consumer + Saga orchestrator)
+    static void processAsync(Transaction txn, boolean success) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                Thread.sleep(100); // simulate queue delay
+                txn.transition(TxnStatus.AML_SCANNING);
+                Thread.sleep(50);
+                txn.transition(TxnStatus.FUND_PULLING);
+                Thread.sleep(50);
+                txn.transition(TxnStatus.CALLBACK_PENDING);
+                Thread.sleep(200); // waiting for third-party callback
+
+                // Simulate third-party callback
+                if (success) {
+                    txn.transition(TxnStatus.COMPLETED);
+                    System.out.println("  → Email sent, Push notification sent");
+                } else {
+                    txn.transition(TxnStatus.FAILED);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+    }
+
+    public static void main(String[] args) throws Exception {
+        System.out.println("=== Customer submits Send Money ===");
+        Transaction txn = new Transaction("TXN-001");
+        System.out.println("POST /submit → 202 Accepted, txnId=" + txn.id);
+
+        processAsync(txn, true);
+
+        // Simulate mobile app polling the journey endpoint
+        System.out.println("\\n=== Mobile polling /journey ===");
+        for (int i = 0; i < 8; i++) {
+            Thread.sleep(100);
+            System.out.println("  Poll #" + (i+1) + " → status=" + txn.status.get());
+            if (txn.status.get() == TxnStatus.COMPLETED || txn.status.get() == TxnStatus.FAILED) break;
+        }
+
+        System.out.println("\\n=== Final journey ===");
+        txn.journey.forEach(step -> System.out.println("  " + step));
+    }
+}`,
+      },
+      {
+        slug: '12-sb-idempotency',
+        title: 'Spring Boot: 2-Layer Idempotency — Redis + Database',
+        order: 12,
+        difficulty: 'advanced',
+        tags: ['spring-boot', 'idempotency', 'redis', 'database', 'payments', 'financial', 'duplicate-prevention'],
+        defaultCode: `import java.util.*;
+import java.util.concurrent.*;
+
+public class JavaLabRunner {
+    // Simulate the 2-layer idempotency gate without Spring/Redis dependencies
+
+    enum KeyState { IN_FLIGHT, COMPLETED }
+    record CachedResponse(String txnId, String journeyUrl) {}
+
+    // Simulated Redis store
+    static final Map<String, Object> redisStore = new ConcurrentHashMap<>();
+    // Simulated DB unique constraint (idempotencyKey → txnId)
+    static final Map<String, String> dbStore = new ConcurrentHashMap<>();
+
+    static CachedResponse submit(String idempotencyKey, String customerId) {
+        String redisKey = "idem:" + idempotencyKey;
+
+        // Layer 1: Redis check
+        Object cached = redisStore.get(redisKey);
+        if (cached instanceof CachedResponse r) {
+            System.out.println("  [" + idempotencyKey + "] CACHE HIT → returning cached 202");
+            return r;
+        }
+        if (cached == KeyState.IN_FLIGHT) {
+            throw new RuntimeException("429: Request already in flight, retry after 30s");
+        }
+
+        // Set IN_FLIGHT marker (atomic setIfAbsent)
+        Object existing = redisStore.putIfAbsent(redisKey, KeyState.IN_FLIGHT);
+        if (existing != null) {
+            throw new RuntimeException("429: Race condition — another thread claimed this key");
+        }
+
+        try {
+            // Layer 2: DB upsert (simulate unique constraint)
+            String txnId = dbStore.computeIfAbsent(idempotencyKey,
+                k -> "TXN-" + UUID.randomUUID().toString().substring(0, 8));
+
+            System.out.println("  [" + idempotencyKey + "] NEW → created txnId=" + txnId);
+
+            CachedResponse response = new CachedResponse(txnId, "/journey/" + txnId);
+            redisStore.put(redisKey, response); // update from IN_FLIGHT to real response
+            return response;
+
+        } catch (Exception ex) {
+            redisStore.remove(redisKey); // release so client can retry
+            throw ex;
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        String key = "client-uuid-abc-123";
+
+        System.out.println("=== First submission ===");
+        CachedResponse r1 = submit(key, "customer-1");
+        System.out.println("  Response: " + r1);
+
+        System.out.println("\\n=== Retry (network reconnect) ===");
+        CachedResponse r2 = submit(key, "customer-1");
+        System.out.println("  Response: " + r2);
+        System.out.println("  Same txnId: " + r1.txnId().equals(r2.txnId())); // true
+
+        System.out.println("\\n=== Different key (new transaction) ===");
+        CachedResponse r3 = submit("different-key-xyz", "customer-1");
+        System.out.println("  Response: " + r3);
+        System.out.println("  Different txnId: " + !r1.txnId().equals(r3.txnId())); // true
+
+        System.out.println("\\n=== IN_FLIGHT race condition ===");
+        redisStore.put("idem:race-key", KeyState.IN_FLIGHT); // simulate another thread
+        try {
+            submit("race-key", "customer-2");
+        } catch (RuntimeException e) {
+            System.out.println("  Caught: " + e.getMessage());
+        }
+    }
+}`,
+      },
+      {
         slug: '02-interview-patterns-glossary',
         title: 'Interview Coding Patterns — Reference Glossary',
         order: 2,
