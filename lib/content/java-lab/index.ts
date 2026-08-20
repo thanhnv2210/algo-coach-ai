@@ -2107,6 +2107,283 @@ public class JavaLabRunner {
 }`,
       },
       {
+        slug: '03-adc-collection-selection',
+        title: 'ADC: Which Collection Should I Use?',
+        order: 3,
+        difficulty: 'intermediate',
+        tags: ['architecture', 'decision', 'collections', 'trade-offs', 'interview-common'],
+        defaultCode: `import java.util.*;
+import java.util.concurrent.*;
+
+public class JavaLabRunner {
+    public static void main(String[] args) {
+        // Random access dominated? → ArrayList
+        List<Integer> list = new ArrayList<>();
+        list.add(1); list.add(2); list.add(3);
+        System.out.println("ArrayList get(1): " + list.get(1)); // O(1)
+
+        // FIFO queue? → ArrayDeque (not LinkedList)
+        Deque<String> queue = new ArrayDeque<>();
+        queue.offer("first"); queue.offer("second");
+        System.out.println("Queue poll: " + queue.poll()); // first
+
+        // Sorted unique keys? → TreeMap
+        TreeMap<String, Integer> scores = new TreeMap<>();
+        scores.put("charlie", 3); scores.put("alice", 1); scores.put("bob", 2);
+        System.out.println("First key: " + scores.firstKey()); // alice
+        System.out.println("Floor of 'az': " + scores.floorKey("az")); // alice
+
+        // LRU cache? → LinkedHashMap with removeEldestEntry
+        int capacity = 3;
+        LinkedHashMap<Integer, String> lru = new LinkedHashMap<>(capacity, 0.75f, true) {
+            protected boolean removeEldestEntry(Map.Entry<Integer,String> eldest) {
+                return size() > capacity;
+            }
+        };
+        lru.put(1, "a"); lru.put(2, "b"); lru.put(3, "c");
+        lru.get(1); // access 1 → moves to tail
+        lru.put(4, "d"); // evicts eldest (2)
+        System.out.println("LRU contains 2: " + lru.containsKey(2)); // false
+        System.out.println("LRU contains 1: " + lru.containsKey(1)); // true
+
+        // Thread-safe counter? → LongAdder > AtomicLong under high contention
+        java.util.concurrent.atomic.LongAdder counter = new java.util.concurrent.atomic.LongAdder();
+        counter.increment(); counter.increment();
+        System.out.println("LongAdder sum: " + counter.sum()); // 2
+    }
+}`,
+      },
+      {
+        slug: '04-adc-concurrency-primitive',
+        title: 'ADC: Which Concurrency Primitive?',
+        order: 4,
+        difficulty: 'advanced',
+        tags: ['architecture', 'decision', 'concurrency', 'volatile', 'locks', 'CAS', 'trade-offs'],
+        defaultCode: `import java.util.concurrent.atomic.*;
+import java.util.concurrent.locks.*;
+
+public class JavaLabRunner {
+    // volatile: visibility only, no atomicity
+    static volatile boolean stopFlag = false;
+
+    // AtomicInteger: CAS-based, lock-free counter
+    static final AtomicInteger casCounter = new AtomicInteger(0);
+
+    // ReentrantLock: interruptible, timed, fair
+    static final ReentrantLock lock = new ReentrantLock(false); // unfair = higher throughput
+
+    // ReadWriteLock: multiple readers OR one writer
+    static final ReadWriteLock rwLock = new ReentrantReadWriteLock();
+    static int sharedData = 0;
+
+    public static void main(String[] args) throws Exception {
+        // volatile stop flag — safe, single write single read
+        Thread worker = new Thread(() -> {
+            while (!stopFlag) { /* spin */ }
+            System.out.println("Worker stopped via volatile flag");
+        });
+        worker.start();
+        Thread.sleep(5);
+        stopFlag = true; // volatile write: happens-before next read
+        worker.join();
+
+        // CAS counter — no lock, fast under low/medium contention
+        casCounter.incrementAndGet();
+        boolean swapped = casCounter.compareAndSet(1, 42);
+        System.out.println("CAS swap to 42: " + swapped + " → " + casCounter.get());
+
+        // ReentrantLock — use when you need tryLock / timed lock / interruptible
+        if (lock.tryLock()) {
+            try {
+                sharedData = 100;
+                System.out.println("Lock held, sharedData = " + sharedData);
+            } finally { lock.unlock(); }
+        }
+
+        // ReadWriteLock — many concurrent readers, exclusive writer
+        rwLock.readLock().lock();
+        try { System.out.println("Read sharedData: " + sharedData); }
+        finally { rwLock.readLock().unlock(); }
+    }
+}`,
+      },
+      {
+        slug: '05-adc-thread-pool',
+        title: 'ADC: Which Thread Pool?',
+        order: 5,
+        difficulty: 'advanced',
+        tags: ['architecture', 'decision', 'thread-pool', 'executor', 'trade-offs', 'interview-common'],
+        defaultCode: `import java.util.concurrent.*;
+
+public class JavaLabRunner {
+    public static void main(String[] args) throws Exception {
+        // Fixed pool — CPU-bound tasks, predictable parallelism
+        ExecutorService fixed = Executors.newFixedThreadPool(
+            Runtime.getRuntime().availableProcessors() + 1
+        );
+
+        // Cached pool — short-lived IO tasks; DANGEROUS under sustained load (unbounded threads)
+        ExecutorService cached = Executors.newCachedThreadPool();
+
+        // Scheduled pool — periodic/delayed tasks
+        ScheduledExecutorService scheduled = Executors.newScheduledThreadPool(2);
+
+        // Custom pool with bounded queue — production-grade pattern
+        ExecutorService custom = new ThreadPoolExecutor(
+            4,                              // corePoolSize
+            8,                              // maxPoolSize
+            60L, TimeUnit.SECONDS,          // keepAlive for idle threads above core
+            new ArrayBlockingQueue<>(100),  // bounded queue — avoid OOM
+            new ThreadPoolExecutor.CallerRunsPolicy() // backpressure: caller runs task if full
+        );
+
+        // Submit a CPU-bound task
+        Future<Integer> f = fixed.submit(() -> {
+            int sum = 0;
+            for (int i = 0; i < 1_000_000; i++) sum += i;
+            return sum;
+        });
+        System.out.println("CPU task result: " + f.get());
+
+        // Schedule a task 100ms from now
+        ScheduledFuture<?> sf = scheduled.schedule(
+            () -> System.out.println("Scheduled task ran"),
+            100, TimeUnit.MILLISECONDS
+        );
+        sf.get();
+
+        fixed.shutdown(); cached.shutdown(); scheduled.shutdown(); custom.shutdown();
+        System.out.println("All pools shut down");
+    }
+}`,
+      },
+      {
+        slug: '06-adc-object-creation',
+        title: 'ADC: Singleton & Object Creation Patterns',
+        order: 6,
+        difficulty: 'advanced',
+        tags: ['architecture', 'decision', 'singleton', 'factory', 'builder', 'design-patterns', 'trade-offs'],
+        defaultCode: `public class JavaLabRunner {
+
+    // Pattern 1: Enum singleton — thread-safe, serialization-safe, simplest
+    enum Config {
+        INSTANCE;
+        private final String env = System.getenv().getOrDefault("ENV", "dev");
+        public String getEnv() { return env; }
+    }
+
+    // Pattern 2: Holder idiom — lazy init without synchronization overhead
+    static class HeavyService {
+        private HeavyService() { System.out.println("HeavyService created"); }
+        private static class Holder {
+            static final HeavyService INSTANCE = new HeavyService();
+        }
+        static HeavyService getInstance() { return Holder.INSTANCE; }
+    }
+
+    // Pattern 3: Double-checked locking — only when enum/holder aren't suitable
+    static class DclSingleton {
+        private static volatile DclSingleton instance; // volatile is REQUIRED
+        private DclSingleton() {}
+        static DclSingleton getInstance() {
+            if (instance == null) {
+                synchronized (DclSingleton.class) {
+                    if (instance == null) instance = new DclSingleton();
+                }
+            }
+            return instance;
+        }
+    }
+
+    // Pattern 4: Builder — when constructor has >3 params or optional fields
+    record ServerConfig(String host, int port, boolean tls, int timeout) {
+        static Builder builder() { return new Builder(); }
+        static class Builder {
+            String host = "localhost"; int port = 8080;
+            boolean tls = false; int timeout = 30;
+            Builder host(String h) { host = h; return this; }
+            Builder port(int p)   { port = p; return this; }
+            Builder tls(boolean t){ tls = t; return this; }
+            Builder timeout(int t){ timeout = t; return this; }
+            ServerConfig build()  { return new ServerConfig(host, port, tls, timeout); }
+        }
+    }
+
+    public static void main(String[] args) {
+        System.out.println("Enum singleton env: " + Config.INSTANCE.getEnv());
+
+        HeavyService s1 = HeavyService.getInstance(); // prints "HeavyService created"
+        HeavyService s2 = HeavyService.getInstance(); // no print — same instance
+        System.out.println("Same instance: " + (s1 == s2));
+
+        ServerConfig cfg = ServerConfig.builder()
+            .host("api.example.com").port(443).tls(true).timeout(60).build();
+        System.out.println("Config: " + cfg);
+    }
+}`,
+      },
+      {
+        slug: '07-adc-stream-vs-loop',
+        title: 'ADC: Stream vs Loop vs Parallel Stream',
+        order: 7,
+        difficulty: 'intermediate',
+        tags: ['architecture', 'decision', 'streams', 'parallel', 'trade-offs', 'interview-common'],
+        defaultCode: `import java.util.*;
+import java.util.stream.*;
+
+public class JavaLabRunner {
+    record Order(String customerId, double amount, boolean isPaid) {}
+
+    public static void main(String[] args) {
+        List<Order> orders = List.of(
+            new Order("A", 120.0, true),
+            new Order("B",  45.0, false),
+            new Order("A",  80.0, true),
+            new Order("C", 200.0, true),
+            new Order("B",  30.0, true)
+        );
+
+        // Stream: readable, composable, lazy — use for most data pipelines
+        Map<String, Double> totalByCustomer = orders.stream()
+            .filter(Order::isPaid)
+            .collect(Collectors.groupingBy(
+                Order::customerId,
+                Collectors.summingDouble(Order::amount)
+            ));
+        System.out.println("Totals by customer: " + totalByCustomer);
+
+        // For-loop: prefer when index matters, early-exit is frequent, or mutation needed
+        double maxPaid = 0;
+        for (Order o : orders) {
+            if (o.isPaid() && o.amount() > maxPaid) maxPaid = o.amount();
+        }
+        System.out.println("Max paid order (loop): " + maxPaid);
+
+        // Same with stream — marginally more readable but allocates Optional
+        double maxPaidStream = orders.stream()
+            .filter(Order::isPaid)
+            .mapToDouble(Order::amount)
+            .max()
+            .orElse(0);
+        System.out.println("Max paid order (stream): " + maxPaidStream);
+
+        // Parallel stream: only for CPU-bound, large (>10k elements), stateless pipelines
+        // NOT for IO, NOT for small lists, NOT when order matters
+        long count = orders.parallelStream()
+            .filter(Order::isPaid)
+            .count();
+        System.out.println("Paid count (parallel): " + count);
+
+        // flatMap: flatten nested structures
+        List<List<Integer>> nested = List.of(List.of(1, 2), List.of(3, 4), List.of(5));
+        List<Integer> flat = nested.stream()
+            .flatMap(Collection::stream)
+            .collect(Collectors.toList());
+        System.out.println("Flattened: " + flat);
+    }
+}`,
+      },
+      {
         slug: '02-interview-patterns-glossary',
         title: 'Interview Coding Patterns — Reference Glossary',
         order: 2,
