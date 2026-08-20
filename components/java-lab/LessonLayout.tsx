@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { CheckCircle2, Circle, Clock, Sparkles, ChevronLeft } from "lucide-react"
+import { CheckCircle2, Circle, Clock, Sparkles, ChevronLeft, Code2, EyeOff } from "lucide-react"
 import { LessonContent } from "./LessonContent"
 import { LessonNav } from "./LessonNav"
 import { CodeEditor } from "./CodeEditor"
@@ -36,6 +36,7 @@ export function LessonLayout({ category, lesson, markdownContent, initialStatus 
   const [showExplain, setShowExplain] = useState(false)
   const [explanation, setExplanation] = useState("")
   const [isExplaining, setIsExplaining] = useState(false)
+  const [showEditor, setShowEditor] = useState(true)
 
   // Mark as in_progress on first open (if not already done)
   useEffect(() => {
@@ -135,7 +136,10 @@ export function LessonLayout({ category, lesson, markdownContent, initialStatus 
         {/* Two-pane content — stacked on mobile, side-by-side on lg+ */}
         <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
         {/* Lesson doc — left pane */}
-        <div className="flex flex-col w-full lg:w-1/2 border-b lg:border-b-0 lg:border-r border-border overflow-y-auto">
+        <div className={cn(
+          "flex flex-col border-b lg:border-b-0 lg:border-r border-border overflow-y-auto",
+          showEditor ? "w-full lg:w-1/2" : "w-full"
+        )}>
           <div className="px-6 py-4 border-b border-border shrink-0">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
@@ -143,7 +147,7 @@ export function LessonLayout({ category, lesson, markdownContent, initialStatus 
                 <span className="text-faint text-xs">/</span>
                 <span className="text-xs text-muted-foreground">Lesson {lesson.order}</span>
               </div>
-              {/* Status selector */}
+              {/* Status + editor toggle */}
               <div className="flex items-center gap-2">
                 <StatusIcon className={cn("size-3.5", statusClass)} />
                 <span className={cn("text-xs font-medium", statusClass)}>{label}</span>
@@ -165,6 +169,19 @@ export function LessonLayout({ category, lesson, markdownContent, initialStatus 
                     Undo
                   </button>
                 )}
+                <button
+                  onClick={() => setShowEditor((v) => !v)}
+                  title={showEditor ? "Hide editor" : "Show editor"}
+                  className={cn(
+                    "ml-2 flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border transition-colors",
+                    showEditor
+                      ? "border-border text-muted-foreground hover:text-foreground hover:bg-subtle"
+                      : "border-primary/40 text-primary bg-primary/10 hover:bg-primary/20"
+                  )}
+                >
+                  {showEditor ? <EyeOff className="size-3" /> : <Code2 className="size-3" />}
+                  {showEditor ? "Hide code" : "Show code"}
+                </button>
               </div>
             </div>
             <h1 className="text-lg font-semibold text-foreground">{lesson.title}</h1>
@@ -183,7 +200,7 @@ export function LessonLayout({ category, lesson, markdownContent, initialStatus 
         </div>
 
         {/* Editor + output — right pane */}
-        <div className="flex flex-col w-full lg:w-1/2 overflow-hidden">
+        <div className={cn("flex flex-col w-full lg:w-1/2 overflow-hidden", !showEditor && "hidden")}>
           <div className="flex-1 flex flex-col gap-3 p-4 overflow-y-auto">
             <CodeEditor value={code} onChange={setCode} height="300px" />
 
