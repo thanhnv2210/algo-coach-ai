@@ -492,6 +492,96 @@ public class JavaLabRunner {
 }`,
       },
       {
+        slug: '10-big-data-collection-patterns',
+        title: 'Big Data Collection Patterns — Mistakes vs Best Practices',
+        order: 10,
+        difficulty: 'advanced',
+        tags: ['memory-efficiency', 'lazy-loading', 'streaming', 'pagination', 'WeakHashMap', 'computeIfAbsent', 'interview-common'],
+        defaultCode: `import java.util.*;
+import java.util.stream.*;
+import java.lang.ref.*;
+
+public class JavaLabRunner {
+
+    // ── MISTAKE 1: Materialise everything into a List before filtering ──────
+    static List<Integer> mistakeEagerLoad(int[] data) {
+        List<Integer> all = new ArrayList<>();
+        for (int d : data) all.add(d);               // copies entire dataset into heap
+        return all.stream().filter(x -> x % 2 == 0).collect(Collectors.toList()); // another copy
+    }
+
+    // ── BEST PRACTICE 1: Stream lazily — never materialise the full set ─────
+    static long bestLazyCount(int[] data) {
+        return Arrays.stream(data)                    // primitive IntStream — zero boxing
+                     .filter(x -> x % 2 == 0)        // lazy: only runs on terminal op
+                     .count();                        // terminal — pulls just enough
+    }
+
+    // ── MISTAKE 2: Load all pages at once ───────────────────────────────────
+    static List<String> mistakeLoadAll(List<String> db) {
+        return new ArrayList<>(db);  // copies entire table into memory
+    }
+
+    // ── BEST PRACTICE 2: Paginate — only load what the caller needs ─────────
+    static List<String> bestPaginate(List<String> db, int page, int size) {
+        int from = page * size;
+        if (from >= db.size()) return List.of();
+        int to = Math.min(from + size, db.size());
+        return db.subList(from, to);                  // view, not a copy
+    }
+
+    // ── MISTAKE 3: get+put instead of computeIfAbsent ───────────────────────
+    static void mistakeGrouping(List<String> words, Map<Character, List<String>> index) {
+        for (String w : words) {
+            char key = w.charAt(0);
+            if (!index.containsKey(key)) index.put(key, new ArrayList<>()); // two lookups
+            index.get(key).add(w);                                           // third lookup
+        }
+    }
+
+    // ── BEST PRACTICE 3: computeIfAbsent — single lookup, atomic ───────────
+    static void bestGrouping(List<String> words, Map<Character, List<String>> index) {
+        for (String w : words)
+            index.computeIfAbsent(w.charAt(0), k -> new ArrayList<>()).add(w); // one lookup
+    }
+
+    // ── MISTAKE 4: Use HashMap as a cache without eviction → memory leak ────
+    static final Map<String, byte[]> mistakeCache = new HashMap<>();
+
+    // ── BEST PRACTICE 4: WeakHashMap — GC can evict entries under pressure ──
+    static final Map<String, byte[]> bestCache = new WeakHashMap<>();
+
+    public static void main(String[] args) {
+        int[] million = IntStream.rangeClosed(1, 1_000_000).toArray();
+
+        // Mistake 1 vs Best Practice 1
+        long t0 = System.nanoTime();
+        List<Integer> eager = mistakeEagerLoad(million); // 2× allocations
+        long t1 = System.nanoTime();
+        long lazyCount = bestLazyCount(million);          // zero extra allocation
+        long t2 = System.nanoTime();
+        System.out.printf("Eager (2 allocs): %d evens in %,dns%n", eager.size(), t1 - t0);
+        System.out.printf("Lazy  (0 allocs): %d evens in %,dns%n", lazyCount,   t2 - t1);
+
+        // Mistake 2 vs Best Practice 2
+        List<String> db = IntStream.rangeClosed(1, 10_000)
+                                   .mapToObj(i -> "row-" + i)
+                                   .collect(Collectors.toList());
+        List<String> page = bestPaginate(db, 3, 20); // only rows 60-79
+        System.out.println("Page 3 (20/page): " + page.get(0) + " … " + page.get(page.size()-1));
+
+        // Mistake 3 vs Best Practice 3
+        List<String> words = List.of("apple","avocado","banana","blueberry","cherry");
+        Map<Character, List<String>> idx1 = new HashMap<>(), idx2 = new HashMap<>();
+        mistakeGrouping(new ArrayList<>(words), idx1);
+        bestGrouping(new ArrayList<>(words), idx2);
+        System.out.println("Grouping (mistake):  " + idx1);
+        System.out.println("Grouping (best):     " + idx2);
+        System.out.println("Results equal: " + idx1.equals(idx2));
+    }
+}`,
+      },
+      {
         slug: '09-collections-glossary',
         title: 'Collections Terminology — Interview Reference',
         order: 9,
@@ -728,6 +818,106 @@ public class JavaLabRunner {
         List<Optional<String>> optionals = List.of(present, empty, Optional.of("world"));
         List<String> values = optionals.stream().flatMap(Optional::stream).toList();
         System.out.println("Stream flatMap: " + values);
+    }
+}`,
+      },
+      {
+        slug: '06-big-data-stream-patterns',
+        title: 'Big Data Stream Patterns — Mistakes vs Best Practices',
+        order: 6,
+        difficulty: 'advanced',
+        tags: ['memory-efficiency', 'lazy', 'parallel', 'flatMap', 'Collectors', 'Files.lines', 'interview-common'],
+        defaultCode: `import java.util.*;
+import java.util.stream.*;
+import java.util.function.*;
+
+public class JavaLabRunner {
+
+    // ── MISTAKE 1: Collect then stream again ─────────────────────────────────
+    static List<String> mistakeDoubleCollect(List<String> names) {
+        List<String> upper = names.stream()
+            .map(String::toUpperCase)
+            .collect(Collectors.toList());    // materialises intermediate list
+        return upper.stream()
+            .filter(s -> s.startsWith("A"))
+            .collect(Collectors.toList());    // second materialisation
+    }
+
+    // ── BEST PRACTICE 1: Compose in one pipeline ─────────────────────────────
+    static List<String> bestSinglePipeline(List<String> names) {
+        return names.stream()
+            .map(String::toUpperCase)
+            .filter(s -> s.startsWith("A"))   // lazy — no intermediate list
+            .collect(Collectors.toList());     // one terminal materialisation
+    }
+
+    // ── MISTAKE 2: flatMap misuse — wrapping in a stream unnecessarily ───────
+    static List<String> mistakeFlatMap(List<List<String>> nested) {
+        List<String> result = new ArrayList<>();
+        for (List<String> inner : nested)
+            result.addAll(inner);             // correct but imperative
+        return result;
+    }
+
+    // ── BEST PRACTICE 2: flatMap to flatten ──────────────────────────────────
+    static List<String> bestFlatMap(List<List<String>> nested) {
+        return nested.stream()
+            .flatMap(Collection::stream)       // 1-to-N: each inner list becomes elements
+            .collect(Collectors.toList());
+    }
+
+    // ── MISTAKE 3: Parallel stream on IO-bound or small data ─────────────────
+    static long mistakeParallel(List<Integer> small) {
+        return small.parallelStream()          // ForkJoinPool overhead > savings for small lists
+            .filter(n -> n % 2 == 0)
+            .count();
+    }
+
+    // ── BEST PRACTICE 3: Parallel only when CPU-bound + large ────────────────
+    static long bestParallel(List<Integer> large) {
+        return large.parallelStream()          // worthwhile when > ~10k elements, CPU-bound
+            .filter(n -> n % 2 == 0)
+            .count();
+    }
+
+    // ── MISTAKE 4: Stateful lambda in parallel stream ─────────────────────────
+    static List<Integer> mistakeStatefulParallel(List<Integer> nums) {
+        List<Integer> result = new ArrayList<>();       // NOT thread-safe
+        nums.parallelStream().forEach(result::add);    // data races → corrupt/missing entries
+        return result;
+    }
+
+    // ── BEST PRACTICE 4: Stateless pipeline, collect thread-safely ───────────
+    static List<Integer> bestStateless(List<Integer> nums) {
+        return nums.parallelStream()
+            .filter(n -> n > 0)
+            .collect(Collectors.toList());     // Collectors handles thread-safe accumulation
+    }
+
+    public static void main(String[] args) {
+        List<String> names = List.of("alice","anna","bob","charlie","andrew");
+
+        // Pattern 1
+        System.out.println("Mistake (double collect): " + mistakeDoubleCollect(new ArrayList<>(names)));
+        System.out.println("Best    (single pipeline): " + bestSinglePipeline(new ArrayList<>(names)));
+
+        // Pattern 2
+        List<List<String>> nested = List.of(List.of("a","b"), List.of("c","d"), List.of("e"));
+        System.out.println("Flattened: " + bestFlatMap(nested));
+
+        // Pattern 3 — parallel on large CPU-bound data
+        List<Integer> large = IntStream.rangeClosed(1, 2_000_000).boxed().collect(Collectors.toList());
+        long t0 = System.nanoTime();
+        long seq  = large.stream().filter(n -> n % 2 == 0).count();
+        long t1 = System.nanoTime();
+        long par  = large.parallelStream().filter(n -> n % 2 == 0).count();
+        long t2 = System.nanoTime();
+        System.out.printf("Sequential: %d evens in %,d ns%n", seq, t1 - t0);
+        System.out.printf("Parallel:   %d evens in %,d ns%n", par, t2 - t1);
+
+        // Pattern 4 — safe parallel collect
+        List<Integer> safe = bestStateless(large.subList(0, 100));
+        System.out.println("Safe parallel collect size: " + safe.size());
     }
 }`,
       },
@@ -1147,6 +1337,103 @@ public class JavaLabRunner {
         }
         pool.shutdown();
         pool.awaitTermination(5, TimeUnit.SECONDS);
+    }
+}`,
+      },
+      {
+        slug: '10-big-data-concurrency-patterns',
+        title: 'Big Data Concurrency Patterns — Mistakes vs Best Practices',
+        order: 10,
+        difficulty: 'advanced',
+        tags: ['memory-efficiency', 'thread-safety', 'ConcurrentHashMap', 'CompletableFuture', 'backpressure', 'interview-common'],
+        defaultCode: `import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
+import java.util.concurrent.locks.*;
+import java.util.stream.*;
+
+public class JavaLabRunner {
+
+    // ── MISTAKE 1: Shared mutable state without synchronisation ──────────────
+    static int mistakeCounter = 0;
+    static void mistakeIncrement() { mistakeCounter++; } // read-modify-write race
+
+    // ── BEST PRACTICE 1: AtomicInteger — CAS, no lock ────────────────────────
+    static final AtomicInteger bestCounter = new AtomicInteger(0);
+
+    // ── MISTAKE 2: synchronized on every read (kills parallelism) ────────────
+    static final Map<String, Integer> mistakeMap = new HashMap<>();
+    static synchronized Integer mistakeGet(String k) { return mistakeMap.get(k); }
+    static synchronized void mistakePut(String k, int v) { mistakeMap.put(k, v); }
+
+    // ── BEST PRACTICE 2: ConcurrentHashMap — lock-free reads ─────────────────
+    static final ConcurrentHashMap<String, Integer> bestMap = new ConcurrentHashMap<>();
+
+    // ── MISTAKE 3: Creating a new thread per task ─────────────────────────────
+    static void mistakeNewThread(Runnable task) {
+        new Thread(task).start(); // thread creation cost ~1ms + 512KB stack each
+    }
+
+    // ── BEST PRACTICE 3: Reuse threads via ExecutorService ───────────────────
+    static final ExecutorService pool = Executors.newFixedThreadPool(
+        Runtime.getRuntime().availableProcessors()
+    );
+
+    // ── MISTAKE 4: Blocking inside CompletableFuture pipeline ─────────────────
+    static CompletableFuture<String> mistakeBlocking() {
+        return CompletableFuture.supplyAsync(() -> {
+            try { Thread.sleep(10); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            return "data";
+        }).thenApply(data -> {
+            // heavy CPU work on the common pool — starves other tasks
+            return data.toUpperCase();
+        });
+    }
+
+    // ── BEST PRACTICE 4: Separate IO from CPU, use thenApplyAsync ────────────
+    static CompletableFuture<String> bestAsync() {
+        return CompletableFuture
+            .supplyAsync(() -> "data", pool)                    // IO on dedicated pool
+            .thenApplyAsync(String::toUpperCase,                // CPU on separate pool
+                            ForkJoinPool.commonPool());
+    }
+
+    public static void main(String[] args) throws Exception {
+        // Pattern 1: race condition vs AtomicInteger
+        int threads = 8, ops = 10_000;
+        ExecutorService exec = Executors.newFixedThreadPool(threads);
+        CountDownLatch latch = new CountDownLatch(threads);
+        for (int t = 0; t < threads; t++) {
+            exec.submit(() -> {
+                for (int i = 0; i < ops; i++) { mistakeIncrement(); bestCounter.incrementAndGet(); }
+                latch.countDown();
+            });
+        }
+        latch.await();
+        System.out.println("Expected: " + (threads * ops));
+        System.out.println("Mistake (race):  " + mistakeCounter + "  ← likely wrong");
+        System.out.println("Best (atomic):   " + bestCounter.get() + "  ← always correct");
+
+        // Pattern 2: ConcurrentHashMap vs synchronized HashMap
+        bestMap.put("a", 1); bestMap.put("b", 2);
+        bestMap.computeIfAbsent("c", k -> 3);   // atomic — no external lock needed
+        System.out.println("ConcurrentHashMap: " + bestMap);
+
+        // Pattern 3: thread pool reuse
+        List<Future<Integer>> futures = new ArrayList<>();
+        for (int i = 0; i < 20; i++) {
+            final int id = i;
+            futures.add(pool.submit(() -> id * id));
+        }
+        int sum = 0;
+        for (Future<Integer> f : futures) sum += f.get();
+        System.out.println("Pool tasks sum of squares: " + sum);
+
+        // Pattern 4: CompletableFuture pipeline
+        String result = bestAsync().get();
+        System.out.println("Async pipeline result: " + result);
+
+        exec.shutdown(); pool.shutdown();
     }
 }`,
       },
