@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { CheckCircle2, Circle, Clock, Sparkles, ChevronLeft, Code2, EyeOff } from "lucide-react"
+import { CheckCircle2, Circle, Clock, Sparkles, ChevronLeft, Code2, EyeOff, Star } from "lucide-react"
 import { LessonContent } from "./LessonContent"
 import { LessonNav } from "./LessonNav"
 import { CodeEditor } from "./CodeEditor"
@@ -26,14 +26,17 @@ interface LessonLayoutProps {
   lesson: JavaLesson
   markdownContent: string
   initialStatus?: LessonStatus
+  initialStarred?: boolean
 }
 
-export function LessonLayout({ category, lesson, markdownContent, initialStatus = "not_started" }: LessonLayoutProps) {
+export function LessonLayout({ category, lesson, markdownContent, initialStatus = "not_started", initialStarred = false }: LessonLayoutProps) {
   const [code, setCode] = useState(lesson.defaultCode)
   const [result, setResult] = useState<RunResult | null>(null)
   const [isRunning, setIsRunning] = useState(false)
   const [status, setStatus] = useState<LessonStatus>(initialStatus)
   const [isSaving, setIsSaving] = useState(false)
+  const [starred, setStarred] = useState(initialStarred)
+  const [isStarring, setIsStarring] = useState(false)
   const [showExplain, setShowExplain] = useState(false)
   const [explanation, setExplanation] = useState("")
   const [isExplaining, setIsExplaining] = useState(false)
@@ -61,6 +64,21 @@ export function LessonLayout({ category, lesson, markdownContent, initialStatus 
       })
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  async function toggleStar() {
+    setIsStarring(true)
+    try {
+      const res = await fetch("/api/java/progress", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categorySlug: category.slug, lessonSlug: lesson.slug }),
+      })
+      const data = await res.json()
+      setStarred(data.starred)
+    } finally {
+      setIsStarring(false)
     }
   }
 
@@ -170,6 +188,20 @@ export function LessonLayout({ category, lesson, markdownContent, initialStatus 
                     Undo
                   </button>
                 )}
+                <button
+                  onClick={toggleStar}
+                  disabled={isStarring}
+                  title={starred ? "Remove from Critical" : "Mark as Critical"}
+                  className={cn(
+                    "ml-2 flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border transition-colors",
+                    starred
+                      ? "border-yellow-500/60 text-yellow-500 bg-yellow-500/10 hover:bg-yellow-500/20"
+                      : "border-border text-muted-foreground hover:text-yellow-500 hover:border-yellow-500/40 hover:bg-yellow-500/5"
+                  )}
+                >
+                  <Star className={cn("size-3", starred && "fill-yellow-500")} />
+                  {starred ? "Critical" : "Mark critical"}
+                </button>
                 <button
                   onClick={() => setShowEditor(!showEditor)}
                   title={showEditor ? "Hide editor" : "Show editor"}

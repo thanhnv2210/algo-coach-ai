@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic"
 
-import { getAllProgress, upsertLessonProgress, getCategoryStats } from "@/services/java-lab.service"
+import { getAllProgress, upsertLessonProgress, getCategoryStats, toggleStarred } from "@/services/java-lab.service"
 import type { JavaLessonStatus } from "@/lib/db/schema"
 
 export async function GET() {
@@ -23,4 +23,16 @@ export async function POST(req: Request) {
 
   await upsertLessonProgress(categorySlug, lessonSlug, status, notes)
   return Response.json({ ok: true })
+}
+
+export async function PATCH(req: Request) {
+  const body = await req.json()
+  const { categorySlug, lessonSlug } = body
+
+  if (!categorySlug || !lessonSlug) {
+    return Response.json({ error: "Missing categorySlug or lessonSlug" }, { status: 400 })
+  }
+
+  const starred = await toggleStarred(categorySlug, lessonSlug)
+  return Response.json({ ok: true, starred })
 }

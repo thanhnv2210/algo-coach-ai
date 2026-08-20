@@ -6,7 +6,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   Menu, X,
-  LayoutDashboard, BookOpen, ListChecks, BrainCircuit, User, FlaskConical,
+  LayoutDashboard, BookOpen, ListChecks, BrainCircuit, User, FlaskConical, Star,
 } from "lucide-react"
 import { cn } from "@/lib/utils/cn"
 
@@ -15,6 +15,7 @@ const navItems = [
   { href: "/topics",    label: "Topics",     icon: BookOpen },
   { href: "/questions", label: "Questions",  icon: ListChecks },
   { href: "/java-lab",  label: "Java Lab",   icon: FlaskConical },
+  { href: "/critical",  label: "Critical",   icon: Star },
   { href: "/ai-coach",  label: "AI Coach",   icon: BrainCircuit },
   { href: "/profile",   label: "Profile",    icon: User },
 ]

@@ -42,6 +42,7 @@ export default async function LessonPage({ params }: Props) {
   ])
 
   const initialStatus = (progressRow?.status ?? "not_started") as "not_started" | "in_progress" | "done"
+  const initialStarred = progressRow?.starred === 1
 
   return (
     <div className="flex flex-col h-full">
@@ -50,6 +51,7 @@ export default async function LessonPage({ params }: Props) {
         lesson={lesson}
         markdownContent={markdownContent}
         initialStatus={initialStatus}
+        initialStarred={initialStarred}
       />
     </div>
   )

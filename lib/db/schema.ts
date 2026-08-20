@@ -73,6 +73,7 @@ export const javaLessonProgress = schema.table("java_lesson_progress", {
   lessonSlug: varchar("lesson_slug", { length: 100 }).notNull(),
   status: varchar("status", { length: 20 }).notNull().default("not_started"),
   // "not_started" | "in_progress" | "done"
+  starred: integer("starred").notNull().default(0), // 0 = normal, 1 = critical/starred
   lastOpenedAt: timestamp("last_opened_at"),
   completedAt: timestamp("completed_at"),
   notes: text("notes"),

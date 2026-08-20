@@ -52,6 +52,43 @@ export async function getAllProgress() {
   return db.select().from(javaLessonProgress)
 }
 
+export async function toggleStarred(categorySlug: string, lessonSlug: string): Promise<boolean> {
+  const existing = await getLessonProgress(categorySlug, lessonSlug)
+  const newStarred = existing?.starred === 1 ? 0 : 1
+
+  if (existing) {
+    await db
+      .update(javaLessonProgress)
+      .set({ starred: newStarred })
+      .where(eq(javaLessonProgress.id, existing.id))
+  } else {
+    await db.insert(javaLessonProgress).values({
+      categorySlug,
+      lessonSlug,
+      status: "in_progress",
+      starred: 1,
+      lastOpenedAt: new Date(),
+    })
+  }
+  return newStarred === 1
+}
+
+export async function getStarredLessons() {
+  const rows = await db
+    .select()
+    .from(javaLessonProgress)
+    .where(eq(javaLessonProgress.starred, 1))
+
+  return rows
+    .map((row) => {
+      const category = JAVA_CURRICULUM.find((c) => c.slug === row.categorySlug)
+      const lesson = category?.lessons.find((l) => l.slug === row.lessonSlug)
+      if (!category || !lesson) return null
+      return { category, lesson, progress: row }
+    })
+    .filter(Boolean) as { category: (typeof JAVA_CURRICULUM)[0]; lesson: (typeof JAVA_CURRICULUM)[0]["lessons"][0]; progress: typeof rows[0] }[]
+}
+
 // Returns per-category completion stats: { slug, total, done }
 export async function getCategoryStats() {
   const allProgress = await getAllProgress()

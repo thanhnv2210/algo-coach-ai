@@ -1,0 +1,1 @@
+ALTER TABLE "algo_coach"."java_lesson_progress" ADD COLUMN "starred" integer DEFAULT 0 NOT NULL;

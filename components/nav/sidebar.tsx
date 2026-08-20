@@ -9,6 +9,7 @@ import {
   BrainCircuit,
   User,
   FlaskConical,
+  Star,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react"
@@ -27,6 +28,7 @@ const navItems = [
   { href: "/topics",    label: "Topics",     icon: BookOpen },
   { href: "/questions", label: "Questions",  icon: ListChecks },
   { href: "/java-lab",  label: "Java Lab",   icon: FlaskConical },
+  { href: "/critical",  label: "Critical",   icon: Star },
   { href: "/ai-coach",  label: "AI Coach",   icon: BrainCircuit },
   { href: "/profile",   label: "Profile",    icon: User },
 ]
