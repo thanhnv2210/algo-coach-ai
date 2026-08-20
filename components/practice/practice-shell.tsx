@@ -185,7 +185,7 @@ export function PracticeShell({ question }: { question: Question }) {
                   key={l.value}
                   onClick={() => handleLangChange(l.value)}
                   className={cn(
-                    "px-2.5 py-1 text-xs rounded font-medium transition-colors",
+                    "px-2.5 py-1.5 md:py-1 text-xs rounded font-medium transition-colors",
                     lang === l.value
                       ? "bg-primary/15 text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-subtle"
@@ -242,7 +242,7 @@ export function PracticeShell({ question }: { question: Question }) {
                 key={t}
                 onClick={() => setTab(t)}
                 className={cn(
-                  "flex-1 py-2 text-xs font-medium capitalize transition-colors",
+                  "flex-1 py-2.5 md:py-2 text-xs font-medium capitalize transition-colors",
                   tab === t
                     ? "text-foreground border-b-2 border-primary"
                     : "text-muted-foreground hover:text-foreground"

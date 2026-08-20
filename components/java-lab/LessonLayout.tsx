@@ -141,7 +141,7 @@ export function LessonLayout({ category, lesson, markdownContent, initialStatus 
           "flex flex-col border-b lg:border-b-0 lg:border-r border-border overflow-y-auto",
           showEditor ? "w-full lg:w-1/2" : "w-full"
         )}>
-          <div className="px-6 py-4 border-b border-border shrink-0">
+          <div className="px-4 md:px-6 py-4 border-b border-border shrink-0">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">{category.title}</span>

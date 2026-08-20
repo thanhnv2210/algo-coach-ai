@@ -77,7 +77,7 @@ export function QuestionTable({ initialQuestions }: { initialQuestions: Question
               <td className="hidden sm:table-cell py-3 text-right">
                 <Link
                   href={`/practice/${q.id}`}
-                  className="inline-flex items-center justify-center size-7 rounded text-faint hover:text-primary hover:bg-primary/10 transition-colors"
+                  className="inline-flex items-center justify-center size-8 md:size-7 rounded text-faint hover:text-primary hover:bg-primary/10 transition-colors"
                   title="Open in Practice"
                 >
                   <Code2 className="size-3.5" />

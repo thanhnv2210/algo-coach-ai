@@ -44,7 +44,7 @@ export function MobileNav() {
         </div>
         <button
           onClick={() => setOpen(true)}
-          className="p-2 -mr-2 text-muted-foreground hover:text-foreground transition-colors"
+          className="p-2.5 -mr-2 text-muted-foreground hover:text-foreground transition-colors"
           aria-label="Open navigation"
         >
           <Menu className="size-5" />
@@ -63,7 +63,7 @@ export function MobileNav() {
       {/* Drawer */}
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border flex flex-col transition-transform duration-200 md:hidden",
+          "fixed inset-y-0 left-0 z-50 w-[80vw] max-w-xs bg-card border-r border-border flex flex-col transition-transform duration-200 md:hidden",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >

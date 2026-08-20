@@ -24,7 +24,7 @@ export function StatusSelect({
       <button
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium transition-opacity hover:opacity-80",
+          "inline-flex items-center gap-1 px-2 py-1.5 md:py-0.5 rounded text-xs font-medium transition-opacity hover:opacity-80",
           config.className
         )}
       >

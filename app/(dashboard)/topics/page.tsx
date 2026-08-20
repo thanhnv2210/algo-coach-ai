@@ -17,9 +17,9 @@ export default async function TopicsPage() {
   const total = progressRows.reduce((s, p) => s + p.totalCount, 0)
 
   return (
-    <div className="px-8 py-8 max-w-5xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-foreground">Learning Roadmap</h1>
+    <div className="px-4 sm:px-6 md:px-8 py-6 md:py-8 max-w-5xl mx-auto">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Learning Roadmap</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {topics.length} topics · {solved}/{total} questions solved · click any card to study
         </p>

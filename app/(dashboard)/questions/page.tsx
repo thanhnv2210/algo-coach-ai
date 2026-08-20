@@ -28,9 +28,9 @@ export default function QuestionsPage() {
   }, [topicFilter, difficultyFilter, statusFilter])
 
   return (
-    <div className="px-8 py-8 max-w-5xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-foreground">Question Library</h1>
+    <div className="px-4 sm:px-6 md:px-8 py-6 md:py-8 max-w-5xl mx-auto">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Question Library</h1>
         <p className="mt-1 text-sm text-muted-foreground">30 curated questions across 13 topics. Track your progress as you solve them.</p>
       </div>
 
@@ -43,7 +43,7 @@ export default function QuestionsPage() {
         />
       </div>
 
-      <div className="bg-card rounded-lg border border-border px-6 py-4">
+      <div className="bg-card rounded-lg border border-border px-3 sm:px-6 py-4">
         {loading ? (
           <div className="text-center py-12 text-muted-foreground text-sm">Loading...</div>
         ) : (
