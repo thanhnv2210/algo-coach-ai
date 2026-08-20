@@ -661,15 +661,356 @@ collectingAndThen(c, fn)    → apply fn after collection (e.g. unmodifiableList
 
 ---
 
+## Part 7 — What Senior Interviews Actually Test (The Gaps)
+
+### Gap 1: sorted() and distinct() Are O(n) Memory Traps
+
+These are **stateful intermediate operations** — they must buffer ALL upstream elements before emitting the first downstream element. Most developers don't realize this.
+
+```java
+// sorted() must see ALL elements before it can emit element #1
+// Because: what if the last element is the smallest?
+employees.stream()
+    .sorted(Comparator.comparingInt(Employee::getSalary)) // buffers ALL employees in memory
+    .limit(5)
+    .collect(Collectors.toList());
+
+// distinct() maintains a HashSet of every seen element
+// 10M unique UUIDs = 10M entries in a HashSet = ~640MB just for the set
+transactions.stream()
+    .distinct() // HashSet growing to 10M entries
+    .count();
+
+// ARCHITECT RULE: For large streams, sorted() and distinct() are O(n) space.
+// Use DB ORDER BY and SELECT DISTINCT instead. Never sort a stream you can sort at source.
+```
+
+**The subtle trap with sorted() + limit():**
+```java
+// You might think this is efficient: "limit(5) stops after 5 elements"
+// It is NOT — sorted() must consume the ENTIRE stream before limit() sees anything
+stream.sorted().limit(5) // sorted buffers all, then limit takes 5 — O(n) memory
+
+// CORRECT for big data: PriorityQueue heap — O(N) space
+```
+
+---
+
+### Gap 2: reduce() vs collect() — The Parallel Correctness Trap
+
+Most developers use `collect` for everything and don't know when `reduce` is appropriate.
+
+```java
+// reduce: immutable folding — produces a single value by combining elements
+// CORRECT for parallel: no shared mutable state
+int totalSalary = employees.stream()
+    .mapToInt(Employee::getSalary)
+    .reduce(0, Integer::sum); // identity + accumulator — pure function
+
+// or with Optional (no identity value):
+Optional<Integer> max = employees.stream()
+    .map(Employee::getSalary)
+    .reduce(Integer::max); // returns Optional because stream may be empty
+
+// collect: builds a mutable container
+// CORRECT for building Lists, Maps, Sets
+List<String> names = employees.stream()
+    .map(Employee::getName)
+    .collect(Collectors.toList());
+```
+
+**The classic reduce() mistake — building a List with reduce:**
+```java
+// WRONG — especially in parallel: creates O(n^2) intermediate lists
+List<String> names = employees.stream()
+    .map(Employee::getName)
+    .reduce(new ArrayList<>(),                          // identity (shared mutable!)
+            (list, name) -> { list.add(name); return list; }, // accumulator (mutates!)
+            (list1, list2) -> { list1.addAll(list2); return list1; }); // combiner
+
+// WHY IT'S WRONG:
+// 1. The identity ArrayList is SHARED across all threads in parallel
+// 2. list.add() mutates — reduce expects pure functions
+// 3. In parallel, multiple threads mutate the same identity list → race condition
+
+// CORRECT: use collect()
+List<String> names = employees.stream()
+    .map(Employee::getName)
+    .collect(Collectors.toList()); // each thread gets its own container, then merged
+```
+
+**Rule:** `reduce()` = combine values into one value (sum, max, concatenate strings). `collect()` = accumulate into a mutable container (List, Map, Set).
+
+---
+
+### Gap 3: Streams Cannot Be Reused
+
+A stream is consumed after its terminal operation. Attempting to reuse it throws `IllegalStateException`.
+
+```java
+Stream<Employee> stream = employees.stream().filter(e -> e.getSalary() > 100_000);
+
+long count = stream.count();      // terminal — stream is now consumed
+List<Employee> list = stream.collect(Collectors.toList()); // THROWS IllegalStateException
+
+// CORRECT: create a new stream for each operation, or use a Supplier
+Supplier<Stream<Employee>> streamSupplier = () -> employees.stream()
+    .filter(e -> e.getSalary() > 100_000);
+
+long count = streamSupplier.get().count();
+List<Employee> list = streamSupplier.get().collect(Collectors.toList());
+```
+
+---
+
+### Gap 4: findFirst() vs findAny() in Parallel
+
+```java
+// findFirst(): guaranteed to return the first element in ENCOUNTER ORDER
+// In parallel: threads must coordinate to ensure order — overhead
+Optional<Employee> first = employees.parallelStream()
+    .filter(e -> e.getSalary() > 100_000)
+    .findFirst(); // forces ordering coordination across parallel threads
+
+// findAny(): returns ANY matching element — whichever thread finds one first
+// In parallel: no coordination needed — much faster
+Optional<Employee> any = employees.parallelStream()
+    .filter(e -> e.getSalary() > 100_000)
+    .findAny(); // faster in parallel — no ordering constraint
+
+// RULE: if you need the FIRST element by encounter order, use findFirst()
+//        if you just need ANY match (e.g., "does any employee qualify?"), use findAny() in parallel
+```
+
+---
+
+### Gap 5: Stream.iterate() for Lazy Pagination (Big Data Pattern)
+
+When you need to process millions of records from a DB but can't load them all:
+
+```java
+// Java 9+: Stream.iterate with takeWhile (lazy pagination — never loads all records)
+Stream.iterate(0, page -> page + 1)                              // infinite page counter
+    .map(page -> repo.findByStatus(PENDING, PageRequest.of(page, 1000))) // fetch page
+    .takeWhile(batch -> !batch.isEmpty())                         // stop when no more data
+    .flatMap(List::stream)                                        // flatten pages → records
+    .forEach(this::processTransaction);                           // process one at a time
+
+// Compared to loading all at once:
+repo.findAll(); // NEVER DO THIS for millions of records
+```
+
+**Why this is better than offset pagination for very large data:**
+For truly huge tables (100M+ rows), offset pagination gets slower with each page. Use keyset pagination instead:
+```java
+String lastId = null;
+List<Transaction> batch;
+do {
+    batch = repo.findByStatusAndIdGreaterThan(PENDING, lastId, PageRequest.of(0, 1000));
+    batch.forEach(this::process);
+    if (!batch.isEmpty()) lastId = batch.get(batch.size() - 1).getId();
+} while (batch.size() == 1000);
+```
+
+---
+
+### Gap 6: Collectors.teeing() — Two Aggregations in One Pass (Java 12+)
+
+When you need two different aggregations over the same data, `teeing()` does it in a single pass — no need to iterate twice.
+
+```java
+// WITHOUT teeing: two passes over the data
+long count = employees.stream().filter(...).count();
+double avg  = employees.stream().filter(...).mapToInt(Employee::getSalary).average().orElse(0);
+
+// WITH teeing: one pass, two results
+record Stats(long count, double avgSalary) {}
+
+Stats stats = employees.stream()
+    .filter(e -> e.getDept().equals("TECH"))
+    .collect(Collectors.teeing(
+        Collectors.counting(),                          // first collector: count
+        Collectors.averagingInt(Employee::getSalary),   // second collector: average
+        Stats::new                                      // merge both results
+    ));
+
+System.out.println("Count: " + stats.count() + ", Avg: " + stats.avgSalary());
+
+// Real use case: count and sum in one pass for a financial report
+record Report(long count, double totalAmount) {}
+
+Report report = transactions.stream()
+    .collect(Collectors.teeing(
+        Collectors.counting(),
+        Collectors.summingDouble(Transaction::getAmount),
+        Report::new
+    ));
+```
+
+---
+
+### Gap 7: groupingByConcurrent — Parallel Grouping Without Merge Overhead
+
+```java
+// groupingBy in parallel: each thread collects into local Map, then Maps are MERGED
+// This merge step is sequential and expensive for many keys
+Map<String, List<Employee>> byDept = employees.parallelStream()
+    .collect(Collectors.groupingBy(Employee::getDept)); // merge overhead
+
+// groupingByConcurrent: all threads write to ONE ConcurrentHashMap directly
+// No merge step — much better for parallel grouping with many groups
+Map<String, List<Employee>> byDept = employees.parallelStream()
+    .collect(Collectors.groupingByConcurrent(Employee::getDept)); // concurrent, no merge
+
+// CAVEAT: groupingByConcurrent does NOT preserve encounter order within groups
+// If order within each group matters, use regular groupingBy
+```
+
+---
+
+### Gap 8: Custom Collector with Collector.of()
+
+For aggregations not covered by built-ins. Shows deep Stream API mastery.
+
+```java
+// Custom collector: compute running average without storing all elements
+Collector<Integer, int[], Double> avgCollector = Collector.of(
+    () -> new int[]{0, 0},           // supplier: [sum, count]
+    (acc, val) -> { acc[0] += val; acc[1]++; },  // accumulator
+    (acc1, acc2) -> new int[]{acc1[0] + acc2[0], acc1[1] + acc2[1]}, // combiner (for parallel)
+    acc -> acc[1] == 0 ? 0.0 : (double) acc[0] / acc[1] // finisher
+);
+
+double avg = Stream.of(10, 20, 30, 40, 50).collect(avgCollector); // 30.0
+
+// Real example: collect into a fixed-size circular buffer (ring buffer)
+Collector<Transaction, ?, Deque<Transaction>> lastN(int n) {
+    return Collector.of(
+        ArrayDeque::new,
+        (deque, t) -> { deque.addLast(t); if (deque.size() > n) deque.pollFirst(); },
+        (d1, d2) -> { d1.addAll(d2); while (d1.size() > n) d1.pollFirst(); return d1; }
+    );
+}
+List<Transaction> last5 = transactions.stream().collect(lastN(5));
+```
+
+---
+
+### Gap 9: flatMapToInt — Primitive Flat Mapping Without Boxing
+
+```java
+// BAD: flatMap to Stream<Integer> then mapToInt — double traversal + boxing
+int total = orders.stream()
+    .flatMap(o -> o.getQuantities().stream())  // Stream<Integer> (boxed)
+    .mapToInt(Integer::intValue)               // unbox each element
+    .sum();
+
+// GOOD: flatMapToInt directly — no boxing, single pipeline
+int total = orders.stream()
+    .flatMapToInt(o -> o.getQuantities().stream().mapToInt(Integer::intValue))
+    .sum();
+
+// BEST: if source is int[], use Arrays.stream() directly
+int total = orders.stream()
+    .flatMapToInt(o -> Arrays.stream(o.getQuantityArray())) // int[] → IntStream directly
+    .sum();
+```
+
+---
+
+### Gap 10: WeakHashMap and SoftReference for Memory-Limited Caches
+
+When you need a cache that automatically releases memory under GC pressure:
+
+```java
+// WeakHashMap: entry is GC'd when the KEY has no other strong references
+// Use for: caching computed results keyed by objects that may become unreachable
+Map<String, HeavyResult> cache = new WeakHashMap<>();
+// When "key" string is no longer referenced elsewhere, the cache entry is removed automatically
+
+// SoftReference: object kept as long as there's free heap; GC'd before OutOfMemoryError
+// Use for: in-process image/report cache that should yield memory under pressure
+Map<String, SoftReference<byte[]>> reportCache = new HashMap<>();
+
+reportCache.put("report-001", new SoftReference<>(generateLargeReport()));
+
+// Read from soft cache
+byte[] report = Optional.ofNullable(reportCache.get("report-001"))
+    .map(SoftReference::get)  // null if GC'd
+    .orElseGet(() -> {
+        byte[] fresh = generateLargeReport(); // regenerate if evicted
+        reportCache.put("report-001", new SoftReference<>(fresh));
+        return fresh;
+    });
+
+// WeakReference: GC'd at next collection regardless of heap pressure
+// Use for: listener registries where you don't want to prevent GC of listeners
+```
+
+| Reference Type | GC'd When | Use For |
+|---------------|-----------|---------|
+| Strong (normal) | Never (until no references) | Regular objects |
+| `SoftReference` | Before OutOfMemoryError | Memory-sensitive caches |
+| `WeakReference` | At next GC cycle | Canonical mappings, listener registries |
+| `WeakHashMap` | When key has no strong refs | Metadata caches keyed by live objects |
+
+---
+
+### Gap 11: Exception Handling in Streams — The Right Patterns
+
+Checked exceptions don't compile inside lambdas. Three strategies:
+
+```java
+// Strategy 1: Wrap with UncheckedIOException / RuntimeException (simplest)
+List<String> contents = files.stream()
+    .map(f -> {
+        try { return Files.readString(f); }
+        catch (IOException e) { throw new UncheckedIOException(e); }
+    })
+    .collect(Collectors.toList());
+
+// Strategy 2: Result wrapper — collect successes and failures separately
+record Result<T>(T value, Exception error) {
+    static <T> Result<T> of(Supplier<T> fn) {
+        try { return new Result<>(fn.get(), null); }
+        catch (Exception e) { return new Result<>(null, e); }
+    }
+    boolean isSuccess() { return error == null; }
+}
+
+Map<Boolean, List<Result<String>>> results = files.stream()
+    .map(f -> Result.of(() -> Files.readString(f)))
+    .collect(Collectors.partitioningBy(Result::isSuccess));
+
+List<String> successes = results.get(true).stream().map(r -> r.value()).toList();
+List<Exception> errors = results.get(false).stream().map(r -> r.error()).toList();
+
+// Strategy 3: Skip failures with filter (when failures are expected and ignorable)
+List<String> contents = files.stream()
+    .map(f -> {
+        try { return Files.readString(f); }
+        catch (IOException e) { log.warn("Skip {}: {}", f, e.getMessage()); return null; }
+    })
+    .filter(Objects::nonNull) // remove nulls from failed reads
+    .collect(Collectors.toList());
+```
+
+---
+
 ## Last-Minute Interview Rules
 
 1. **Always ask about data size before choosing algorithm.** "How many records are we talking about?"
 2. **Never sort to find top-N in big data.** Use a min-heap / PriorityQueue.
-3. **Parallel stream ≠ always faster.** Mention the common ForkJoinPool risk in Spring Boot.
-4. **`orElseGet` not `orElse` for expensive defaults.** `orElse` always evaluates.
-5. **`flatMap` flattens one level.** If you have `Stream<Stream<T>>`, flatMap gives you `Stream<T>`.
-6. **`peek` is for debugging only.** Never rely on it for business logic — it's not guaranteed to fire.
-7. **`collect(Collectors.toList())` is thread-safe in parallel.** `new ArrayList<> + forEach` is not.
-8. **Push filtering to the DB.** A stream over 10M rows loaded into a Java List is always wrong.
-9. **`IntSummaryStatistics` for multi-stat aggregation.** Single pass for min, max, avg, count, sum.
-10. **Checked exceptions don't work cleanly in lambdas.** Know how to wrap them (`UncheckedIOException`, etc.) or when to use a plain loop instead.
+3. **`sorted()` and `distinct()` are O(n) memory** — they buffer all elements. Use DB ORDER BY / DISTINCT instead.
+4. **Parallel stream ≠ always faster.** Mention the common ForkJoinPool risk in Spring Boot.
+5. **`orElseGet` not `orElse` for expensive defaults.** `orElse` always evaluates.
+6. **`flatMap` flattens one level.** If you have `Stream<Stream<T>>`, flatMap gives you `Stream<T>`.
+7. **`peek` is for debugging only.** Never rely on it for business logic — it's not guaranteed to fire.
+8. **`collect(Collectors.toList())` is thread-safe in parallel.** `new ArrayList<> + forEach` is not.
+9. **`reduce()` with a mutable identity is wrong in parallel.** Use `collect()` for building containers.
+10. **Streams cannot be reused.** After a terminal op, `IllegalStateException` on reuse.
+11. **`findAny()` is faster than `findFirst()` in parallel.** Use `findAny()` when order doesn't matter.
+12. **`teeing()` for two aggregations in one pass.** No need to iterate twice for count + sum.
+13. **Push filtering to the DB.** A stream over 10M rows loaded into a Java List is always wrong.
+14. **`IntSummaryStatistics` for multi-stat aggregation.** Single pass for min, max, avg, count, sum.
+15. **Checked exceptions don't work cleanly in lambdas.** Know the Result wrapper pattern for collecting failures.

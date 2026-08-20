@@ -241,6 +241,173 @@ List<String> results = transactions.parallelStream()
 
 ---
 
+---
+
+## Part 8 — What Senior Interviews Actually Test (The Gaps)
+
+### sorted() and distinct() Are O(n) Memory Traps
+
+```java
+// sorted() MUST buffer ALL elements before emitting the first one
+// Even with limit(5) after it — sorted sees everything first
+stream.sorted().limit(5) // O(n) memory, not O(5)
+
+// distinct() maintains a HashSet of every seen element
+// 10M unique values = 10M HashSet entries → huge memory
+stream.distinct() // O(n) memory
+
+// RULE: for big data, use DB ORDER BY / DISTINCT — never sort/distinct a large stream
+```
+
+### reduce() vs collect() — The Parallel Correctness Trap
+
+```java
+// reduce: pure immutable folding → a single value (correct in parallel)
+int sum = employees.stream().mapToInt(Employee::getSalary).reduce(0, Integer::sum);
+
+// WRONG: reduce to build a List — identity ArrayList is SHARED across parallel threads
+List<String> bad = employees.parallelStream()
+    .map(Employee::getName)
+    .reduce(new ArrayList<>(),                            // SHARED identity — race condition
+            (list, name) -> { list.add(name); return list; }, // mutates!
+            (l1, l2) -> { l1.addAll(l2); return l1; });
+
+// CORRECT: collect() gives each thread its own container, then merges
+List<String> good = employees.parallelStream()
+    .map(Employee::getName)
+    .collect(Collectors.toList()); // thread-safe
+```
+
+### Streams Cannot Be Reused
+
+```java
+Stream<Employee> s = employees.stream().filter(e -> e.getSalary() > 100_000);
+long count = s.count();             // terminal — stream consumed
+List<Employee> list = s.collect(Collectors.toList()); // THROWS IllegalStateException
+
+// FIX: use Supplier to create fresh streams
+Supplier<Stream<Employee>> src = () -> employees.stream().filter(e -> e.getSalary() > 100_000);
+long count = src.get().count();
+List<Employee> list = src.get().collect(Collectors.toList());
+```
+
+### findFirst() vs findAny() in Parallel
+
+```java
+// findFirst(): guarantees encounter order — threads must coordinate → slower in parallel
+employees.parallelStream().filter(...).findFirst(); // ordering overhead
+
+// findAny(): returns whichever thread finds first → faster in parallel
+employees.parallelStream().filter(...).findAny();   // no ordering constraint
+
+// RULE: use findAny() in parallel when you just need "any matching element"
+```
+
+### Stream.iterate() for Lazy Pagination
+
+```java
+// Process 10M DB records without loading them all — Java 9+
+Stream.iterate(0, page -> page + 1)
+    .map(page -> repo.findAll(PageRequest.of(page, 1000)))
+    .takeWhile(batch -> !batch.isEmpty())
+    .flatMap(List::stream)
+    .forEach(this::process); // constant memory, one page at a time
+```
+
+### Collectors.teeing() — Two Aggregations in One Pass (Java 12+)
+
+```java
+// WITHOUT teeing: scan data twice
+long count = stream1.count();
+double avg = stream2.mapToInt(...).average().orElse(0);
+
+// WITH teeing: one pass, two results
+record Stats(long count, double avg) {}
+Stats s = employees.stream()
+    .collect(Collectors.teeing(
+        Collectors.counting(),
+        Collectors.averagingInt(Employee::getSalary),
+        Stats::new
+    ));
+```
+
+### groupingByConcurrent for Parallel Grouping
+
+```java
+// groupingBy in parallel: threads collect locally, then MERGE maps (sequential overhead)
+// groupingByConcurrent: all threads write directly to ONE ConcurrentHashMap — no merge
+Map<String, List<Employee>> byDept = employees.parallelStream()
+    .collect(Collectors.groupingByConcurrent(Employee::getDept)); // faster in parallel
+
+// CAVEAT: does NOT preserve encounter order within groups
+```
+
+### Custom Collector with Collector.of()
+
+```java
+// Collect last N elements (ring buffer) — not possible with built-in collectors
+static <T> Collector<T, ?, List<T>> lastN(int n) {
+    return Collector.of(
+        ArrayDeque::new,
+        (deque, t) -> { deque.addLast(t); if (deque.size() > n) deque.pollFirst(); },
+        (d1, d2) -> { d1.addAll(d2); while (d1.size() > n) d1.pollFirst(); return d1; },
+        ArrayList::new
+    );
+}
+// Usage:
+List<Transaction> last5 = transactions.stream().collect(lastN(5));
+```
+
+### Exception Handling in Streams — Result Wrapper Pattern
+
+```java
+// Checked exceptions don't compile in lambdas — wrap or use result pattern
+record Result<T>(T value, Exception error) {
+    static <T> Result<T> of(Supplier<T> fn) {
+        try { return new Result<>(fn.get(), null); }
+        catch (Exception e) { return new Result<>(null, e); }
+    }
+    boolean isSuccess() { return error == null; }
+}
+
+// Collect successes and failures separately in one pass
+Map<Boolean, List<Result<String>>> results = files.stream()
+    .map(f -> Result.of(() -> Files.readString(f)))
+    .collect(Collectors.partitioningBy(Result::isSuccess));
+
+List<String> ok     = results.get(true).stream().map(r -> r.value()).toList();
+List<Exception> err = results.get(false).stream().map(r -> r.error()).toList();
+```
+
+### WeakHashMap and SoftReference for Memory-Sensitive Caches
+
+```java
+// SoftReference: kept until JVM needs memory — GC'd before OutOfMemoryError
+// Perfect for in-process report/image caches under memory pressure
+Map<String, SoftReference<byte[]>> cache = new HashMap<>();
+
+byte[] report = Optional.ofNullable(cache.get("key"))
+    .map(SoftReference::get)   // null if already GC'd
+    .orElseGet(() -> {
+        byte[] fresh = generate();
+        cache.put("key", new SoftReference<>(fresh));
+        return fresh;
+    });
+
+// WeakHashMap: entry removed when KEY has no other strong references
+// Perfect for: metadata caches keyed by objects that may become unreachable
+Map<Object, Metadata> meta = new WeakHashMap<>();
+```
+
+| Type | GC'd When | Use For |
+|------|-----------|---------|
+| Strong ref | Never (while referenced) | Regular objects |
+| `SoftReference` | Before OOM | Memory-sensitive cache |
+| `WeakReference` | Next GC cycle | Listener registries |
+| `WeakHashMap` | Key becomes unreachable | Metadata caches |
+
+---
+
 ## Cheat Sheet
 
 ```
@@ -250,14 +417,29 @@ flatMap → T → Stream<R>            (1 to many, flattens)
 Optional.map     → T → R           (wraps in Optional)
 Optional.flatMap → T → Optional<R> (no double-wrapping)
 
-orElse(val)     → always evaluates val
-orElseGet(fn)   → lazy, evaluates fn only when empty  ← prefer this
+orElse(val)     → always evaluates val (eager)
+orElseGet(fn)   → lazy, only when empty  ← prefer for expensive defaults
+
+sorted()  = O(n) memory — buffers ALL elements (even with limit after it)
+distinct() = O(n) memory — HashSet of every seen element
+→ For big data: push ORDER BY / DISTINCT to the DB
 
 sorted() in parallel = expensive (merge step is sequential)
 forEach in parallel  = unsafe with mutable shared state
 collect(toList())    = thread-safe in parallel
+reduce(mutableList)  = WRONG in parallel (shared identity)
 
-Top-N big data      = PriorityQueue min-heap size N
+findFirst() parallel = ordering overhead (thread coordination)
+findAny()   parallel = faster (no ordering constraint)
+
+Stream reuse         = IllegalStateException — use Supplier<Stream<T>>
+
+Top-N big data      = PriorityQueue min-heap size N  (O(n log N), O(N) space)
 At-least-N check    = filter().limit(N).count() == N  (short-circuit)
-Numeric stats       = mapToInt().summaryStatistics()   (single pass, no boxing)
+Two aggregations    = Collectors.teeing() — one pass
+Numeric stats       = mapToInt().summaryStatistics()  (single pass, no boxing)
+Parallel grouping   = groupingByConcurrent (no merge overhead)
+Custom aggregation  = Collector.of(supplier, accumulator, combiner, finisher)
+Exception in stream = Result<T> wrapper + partitioningBy(isSuccess)
+Memory cache        = SoftReference (yields on pressure) / WeakHashMap (auto-evicts)
 ```
