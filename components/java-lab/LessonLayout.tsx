@@ -11,6 +11,7 @@ import { OutputPanel, type RunResult } from "./OutputPanel"
 import { ExplainPanel } from "./ExplainPanel"
 import { type JavaCategory, type JavaLesson } from "@/lib/content/java-lab"
 import { cn } from "@/lib/utils/cn"
+import { useTheme } from "@/components/theme-provider"
 
 type LessonStatus = "not_started" | "in_progress" | "done"
 
@@ -36,7 +37,7 @@ export function LessonLayout({ category, lesson, markdownContent, initialStatus 
   const [showExplain, setShowExplain] = useState(false)
   const [explanation, setExplanation] = useState("")
   const [isExplaining, setIsExplaining] = useState(false)
-  const [showEditor, setShowEditor] = useState(true)
+  const { showEditor, setShowEditor } = useTheme()
 
   // Mark as in_progress on first open (if not already done)
   useEffect(() => {
@@ -170,7 +171,7 @@ export function LessonLayout({ category, lesson, markdownContent, initialStatus 
                   </button>
                 )}
                 <button
-                  onClick={() => setShowEditor((v) => !v)}
+                  onClick={() => setShowEditor(!showEditor)}
                   title={showEditor ? "Hide editor" : "Show editor"}
                   className={cn(
                     "ml-2 flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border transition-colors",
