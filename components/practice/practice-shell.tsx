@@ -145,7 +145,7 @@ export function PracticeShell({ question }: { question: Question }) {
       : "text-red-400"
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="flex flex-col h-dvh">
       {/* Header */}
       <div className="flex items-center gap-4 px-5 py-3 border-b border-border bg-card shrink-0">
         <Link

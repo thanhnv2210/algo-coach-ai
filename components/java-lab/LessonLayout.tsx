@@ -113,12 +113,12 @@ export function LessonLayout({ category, lesson, markdownContent, initialStatus 
   const { label, icon: StatusIcon, className: statusClass } = STATUS_CONFIG[status]
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex h-full">
       {/* Lesson nav sidebar — desktop only */}
       <LessonNav category={category} currentLesson={lesson} currentStatus={status} />
 
       {/* Main content area */}
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+      <div className="flex flex-col flex-1 min-w-0">
         {/* Mobile breadcrumb — hidden on lg+ (sidebar handles navigation there) */}
         <div className="flex lg:hidden items-center gap-2 px-4 py-2 border-b border-border bg-card shrink-0 text-xs">
           <Link
@@ -135,7 +135,7 @@ export function LessonLayout({ category, lesson, markdownContent, initialStatus 
         </div>
 
         {/* Two-pane content — stacked on mobile, side-by-side on lg+ */}
-        <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
+        <div className="flex flex-col lg:flex-row flex-1">
         {/* Lesson doc — left pane */}
         <div className={cn(
           "flex flex-col border-b lg:border-b-0 lg:border-r border-border overflow-y-auto",
@@ -201,7 +201,7 @@ export function LessonLayout({ category, lesson, markdownContent, initialStatus 
         </div>
 
         {/* Editor + output — right pane */}
-        <div className={cn("flex flex-col w-full lg:w-1/2 overflow-hidden", !showEditor && "hidden")}>
+        <div className={cn("flex flex-col w-full lg:w-1/2", !showEditor && "hidden")}>
           <div className="flex-1 flex flex-col gap-3 p-4 overflow-y-auto">
             <CodeEditor value={code} onChange={setCode} height="300px" />
 

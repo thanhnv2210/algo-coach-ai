@@ -44,7 +44,7 @@ export default async function LessonPage({ params }: Props) {
   const initialStatus = (progressRow?.status ?? "not_started") as "not_started" | "in_progress" | "done"
 
   return (
-    <div className="flex flex-col h-[calc(100vh-0px)] overflow-hidden">
+    <div className="flex flex-col h-full">
       <LessonLayout
         category={category}
         lesson={lesson}

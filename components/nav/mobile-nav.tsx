@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { createPortal } from "react-dom"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
@@ -32,57 +33,63 @@ function BstIcon() {
 
 export function MobileNav() {
   const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
 
-  return (
+  // Portal requires the DOM to be available
+  useEffect(() => { setMounted(true) }, [])
+
+  // Close on route change
+  useEffect(() => { setOpen(false) }, [pathname])
+
+  // Prevent body scroll while drawer is open
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : ""
+    return () => { document.body.style.overflow = "" }
+  }, [open])
+
+  const drawer = mounted ? createPortal(
     <>
-      {/* Top bar — mobile only */}
-      <div className="flex md:hidden items-center justify-between px-4 py-3 border-b border-border bg-card shrink-0">
-        <div className="flex items-center gap-2">
-          <BstIcon />
-          <span className="font-semibold text-sm text-foreground">AlgoCoach AI</span>
-        </div>
-        <button
-          onClick={() => setOpen(true)}
-          className="p-2.5 -mr-2 text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="Open navigation"
-        >
-          <Menu className="size-5" />
-        </button>
-      </div>
-
-      {/* Backdrop */}
-      {open && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
-          onClick={() => setOpen(false)}
-          aria-hidden
-        />
-      )}
-
-      {/* Drawer */}
+      {/* Backdrop — rendered at body level, no overflow-hidden ancestor */}
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-[80vw] max-w-xs bg-card border-r border-border flex flex-col transition-transform duration-200 md:hidden",
+          "fixed inset-0 bg-black/50 transition-opacity duration-200 md:hidden",
+          open ? "opacity-100 z-40" : "opacity-0 pointer-events-none -z-10"
+        )}
+        style={{ touchAction: "manipulation" }}
+        onClick={() => setOpen(false)}
+        aria-hidden
+      />
+
+      {/* Drawer — also at body level */}
+      <div
+        id="mobile-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation menu"
+        aria-hidden={!open}
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-[80vw] max-w-xs bg-card border-r border-border",
+          "flex flex-col transition-transform duration-200 md:hidden",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        {/* Drawer header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
             <BstIcon />
             <span className="font-semibold text-sm text-foreground">AlgoCoach AI</span>
           </div>
           <button
+            type="button"
             onClick={() => setOpen(false)}
-            className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+            style={{ touchAction: "manipulation" }}
+            className="p-2 cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
             aria-label="Close navigation"
           >
             <X className="size-5" />
           </button>
         </div>
 
-        {/* Nav links */}
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {navItems.map(({ href, label, icon: Icon }) => {
             const isActive =
@@ -97,7 +104,6 @@ export function MobileNav() {
               <Link
                 key={href}
                 href={href}
-                onClick={() => setOpen(false)}
                 className={cn(
                   "flex items-center gap-3 px-3 py-3 rounded-md text-sm font-medium transition-colors",
                   isActive
@@ -112,6 +118,32 @@ export function MobileNav() {
           })}
         </nav>
       </div>
+    </>,
+    document.body
+  ) : null
+
+  return (
+    <>
+      {/* Top bar — stays in normal DOM flow */}
+      <div className="flex md:hidden items-center justify-between px-4 py-3 border-b border-border bg-card shrink-0">
+        <div className="flex items-center gap-2">
+          <BstIcon />
+          <span className="font-semibold text-sm text-foreground">AlgoCoach AI</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          style={{ touchAction: "manipulation" }}
+          className="p-2.5 -mr-2 cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Open navigation"
+          aria-expanded={open}
+          aria-controls="mobile-drawer"
+        >
+          <Menu className="size-5" />
+        </button>
+      </div>
+
+      {drawer}
     </>
   )
 }

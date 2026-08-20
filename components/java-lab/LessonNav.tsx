@@ -34,7 +34,7 @@ export function LessonNav({ category, currentLesson, currentStatus = "not_starte
 
   return (
     <aside className={cn(
-      "hidden lg:flex lg:flex-col shrink-0 border-r border-border h-full overflow-hidden transition-all duration-200",
+      "hidden lg:flex lg:flex-col shrink-0 border-r border-border h-full transition-all duration-200",
       sidebarCollapsed ? "w-10" : "w-56"
     )}>
       {sidebarCollapsed ? (

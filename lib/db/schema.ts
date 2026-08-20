@@ -79,6 +79,25 @@ export const javaLessonProgress = schema.table("java_lesson_progress", {
   createdAt: timestamp("created_at").defaultNow(),
 })
 
+// ─── Client Error Log ─────────────────────────────────────────────────────────
+
+export const clientErrors = schema.table("client_errors", {
+  id: serial("id").primaryKey(),
+  // error info
+  message: text("message").notNull(),
+  stack: text("stack"),
+  errorType: varchar("error_type", { length: 50 }),   // "unhandledrejection" | "onerror" | "manual"
+  // context
+  url: text("url"),
+  userAgent: text("user_agent"),
+  componentStack: text("component_stack"),             // from React error boundary
+  extra: jsonb("extra"),                               // arbitrary structured data
+  // timing
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+})
+
+export type ClientError = typeof clientErrors.$inferSelect
+
 // ─── Inferred types ────────────────────────────────────────────────────────────
 
 export type Topic = typeof topics.$inferSelect
