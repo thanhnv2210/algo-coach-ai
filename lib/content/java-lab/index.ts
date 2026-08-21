@@ -3358,6 +3358,108 @@ public class JavaLabRunner {
 }`,
       },
       {
+        slug: '15-interview-lessons-learned',
+        title: 'Interview Lessons Learned — Personal Retrospective',
+        order: 15,
+        difficulty: 'intermediate',
+        tags: ['interview-prep', 'lessons-learned', 'retrospective', 'mindset', 'interview-common'],
+        defaultCode: `import java.util.*;
+import java.util.stream.*;
+
+// ── DRILL ROUND 1 — Run these without looking at notes ──────────────────────
+// Goal: each pattern should take < 30 seconds to write from memory.
+// Mark the gap registry in lesson 15 as resolved after you can do all 5.
+
+public class JavaLabRunner {
+
+    // Gap 1: Java Record — write from memory
+    record Employee(String name, String dept, int salary) {
+        // compact constructor — validation
+        Employee {
+            if (salary < 0) throw new IllegalArgumentException("salary cannot be negative");
+        }
+        // custom method — records can have instance methods
+        String display() { return name + " [" + dept + "] " + String.format("%,d", salary); }
+    }
+
+    // Gap 4: Two-pointer write — move zeros to right, in-place O(n)/O(1)
+    static void moveZerosRight(int[] arr) {
+        int w = 0;
+        for (int n : arr) { if (n != 0) arr[w++] = n; }
+        while (w < arr.length) arr[w++] = 0;
+    }
+
+    public static void main(String[] args) {
+
+        // ── Gap 1: Record ────────────────────────────────────────────────
+        System.out.println("=== Gap 1: Java Record ===");
+        var staff = List.of(
+            new Employee("Alice", "TECH", 120_000),
+            new Employee("Bob",   "TECH",  95_000),
+            new Employee("Carol", "FIN",  110_000)
+        );
+        staff.forEach(e -> System.out.println("  " + e.display()));
+        // Accessors: e.name()  e.dept()  e.salary()  — NO "get" prefix
+
+        // ── Gap 2 + 3: Second largest — all 3 variants ───────────────────
+        System.out.println("\\n=== Gap 2+3: Second Largest ===");
+        int[] nums = {5, 12, 9, 21, 21, 7, 18};
+
+        // O(n log n) stream — .boxed() bridges IntStream → Stream<Integer> for Comparator
+        int streamAnswer = Arrays.stream(nums)
+            .boxed()                             // Gap 3: IntStream needs .boxed() for Comparator
+            .distinct()
+            .sorted(Comparator.reverseOrder())
+            .skip(1)                             // Gap 2: skip(1) = bypass largest
+            .findFirst()                         // returns Optional<Integer>
+            .orElseThrow();
+        System.out.println("  Stream O(n log n): " + streamAnswer);
+
+        // O(n) min-heap of size 2
+        PriorityQueue<Integer> heap = new PriorityQueue<>(2);
+        Arrays.stream(nums).distinct().forEach(n -> {
+            heap.offer(n);
+            if (heap.size() > 2) heap.poll();
+        });
+        System.out.println("  Heap   O(n):       " + heap.peek());
+
+        // O(n) single-pass reduce
+        int[] top = Arrays.stream(nums).distinct().boxed()
+            .reduce(new int[]{Integer.MIN_VALUE, Integer.MIN_VALUE},
+                (pair, n) -> {
+                    if (n > pair[0]) return new int[]{n, pair[0]};
+                    if (n > pair[1]) return new int[]{pair[0], n};
+                    return pair;
+                }, (a, b) -> a);
+        System.out.println("  Reduce O(n):       " + top[1]);
+
+        // ── Gap 5: Always state complexity + volunteer upgrade ────────────
+        System.out.println("\\n=== Gap 5: Complexity habit ===");
+        System.out.println("  Say out loud after EVERY answer:");
+        System.out.println("  'This is O(n log n) time, O(1) space.'");
+        System.out.println("  'For large data I would switch to a min-heap");
+        System.out.println("   of size K — O(n log K) time, O(K) space.'");
+
+        // ── Gap 4: Two-pointer write ─────────────────────────────────────
+        System.out.println("\\n=== Gap 4: Move Zeros ===");
+        int[] arr = {0, 1, 2, 3, 0, 0};
+        moveZerosRight(arr);
+        System.out.println("  " + Arrays.toString(arr)); // [1, 2, 3, 0, 0, 0]
+
+        int[] tricky = {1, 0, 0, 2};                    // case that breaks naive bubble
+        moveZerosRight(tricky);
+        System.out.println("  " + Arrays.toString(tricky)); // [1, 2, 0, 0]
+
+        // ── Freeze protocol reminder ──────────────────────────────────────
+        System.out.println("\\n=== Freeze Protocol ===");
+        System.out.println("  1. 'Let me think through the approach before coding.'");
+        System.out.println("  2. State algorithm in plain English first.");
+        System.out.println("  3. Write pseudocode comments, then fill operators.");
+        System.out.println("  4. If stuck: 'I know the algorithm — recalling the operator...'");
+    }
+}`,
+      },
+      {
         slug: '14-array-two-pointer',
         title: 'Array In-Place Manipulation — Two-Pointer Pattern',
         order: 14,
