@@ -18,6 +18,98 @@ The goal is not to feel bad about mistakes. The goal is to make each mistake pay
 
 ---
 
+## Vibe Coding and the Production Muscle Problem
+
+### What Vibe Coding does to your skills (honest assessment)
+
+Vibe Coding — using AI to generate most of the code you ship — is now normal and efficient. It is not cheating and it is not laziness. Senior engineers at top companies do it. But it has a specific side effect that compounds silently:
+
+**It separates understanding from production.**
+
+You develop two distinct abilities:
+- `evaluate(code)` — read AI output, spot bugs, judge trade-offs, approve or reject → this stays sharp or improves
+- `produce(intent → syntax)` — translate a mental model into working code from a blank editor → this atrophies without deliberate practice
+
+Interviews test `produce`. Your day job mostly exercises `evaluate`.
+
+This is why today happened: the algorithm for second-largest was completely clear in your head. You just could not emit the stream operators. The logic was there. The production muscle wasn't warmed up.
+
+---
+
+### What this means for a senior engineer
+
+| Situation | `evaluate` enough? | `produce` needed? |
+|-----------|-------------------|-------------------|
+| PR review — spot a bug in AI-generated code | Yes | No |
+| Architecture decision — choose between two approaches | Yes | No |
+| Unblocking a junior who is stuck on syntax | No | Yes |
+| Live interview — whiteboard or blank editor | No | Yes |
+| Production incident — trace through unfamiliar code fast | No | Yes — must write diagnostic code on the spot |
+| Pointing out a bug in a meeting without a laptop | No | Yes — must hold the model in your head |
+
+The risk is not that you use AI. The risk is that if `produce` atrophies completely, you become **dependent** on the AI being available. A senior engineer who can only code when Claude is open is brittle. A senior engineer who uses Claude to go 10x faster but can code without it is robust.
+
+---
+
+### The fix: deliberate production practice (not abandoning AI)
+
+You do not need to stop using Vibe Coding. You need a small, consistent practice that keeps the translation layer warm.
+
+**Weekly minimum (20 minutes, no AI open):**
+
+```
+Monday:    Write one data structure method from memory (HashMap, PriorityQueue, etc.)
+Wednesday: Solve one stream problem from the 10 reflexes drill — no looking at operators
+Friday:    Write one design pattern or architectural snippet from memory
+           (e.g. the idempotency service, a @ControllerAdvice handler, a Saga step)
+```
+
+**Before every interview (the day before, 30 minutes):**
+
+```
+1. Close all AI tools
+2. Open a blank editor
+3. Write these 5 things from memory — do not look anything up:
+   a. A Java record with compact constructor
+   b. moveZerosRight (two-pointer write)
+   c. Second largest (stream version)
+   d. ConcurrentHashMap — state when to use it vs HashMap
+   e. One Spring Boot pattern from your domain (idempotency / saga / exception handler)
+4. If you blank on any of them — that is your drill target for the next 2 hours
+```
+
+**The interview day reality check:**
+
+Before starting an interview, ask yourself:
+> _"Could I write the code they'll ask me about if my internet was down and Claude was offline?"_
+
+If the honest answer is no — you need more production practice before that interview. Consider rescheduling.
+
+---
+
+### How to frame this if asked directly in an interview
+
+Some interviewers now ask: _"How do you use AI in your development workflow?"_
+
+**Good answer:**
+> _"I use AI heavily for boilerplate, first drafts, and exploring unfamiliar APIs. My job shifts to directing it, reviewing its output critically, and knowing when it's wrong. I also make a point of writing core patterns by hand regularly so I stay fluent in the syntax — I don't want to be dependent on the tool being available."_
+
+**What not to say:**
+> _"I use AI for everything now, I don't really write much code manually."_ — This is honest but signals brittle dependency to a senior interviewer.
+
+---
+
+### What you actually are right now
+
+- Strong on architecture, patterns, system design, trade-offs — this is `evaluate` working well
+- Domain knowledge (payments, remittance, idempotency, saga) — deep and genuine
+- Production muscle for Java stream operators — needs deliberate warm-up practice
+- Under pressure with no AI — atrophied, recoverable in 2–3 weeks of 20-min daily drills
+
+That is not a red flag. That is a skills distribution that is common among engineers who adopted AI tools early. The gap is specific and fixable. What would be a red flag is knowing this and not addressing it.
+
+---
+
 ## Incident Log
 
 ### 2026-08-21 — Interview #1 (Java Streams + Spring Boot)
@@ -292,3 +384,6 @@ If you are sick, sleep-deprived, or otherwise not at baseline — reschedule. A 
 
 **6. A labelled guess is better than a confident wrong answer.**
 If you don't know, say so and reason from what you do know. Interviewers evaluate how you think, not just what you've memorised. A wrong answer stated with confidence destroys credibility; a labelled guess with sound reasoning builds it. The HashMap incident: the reasoning (concurrent = thread-safe) was correct — the mistake was not labelling it as a guess, then stating the label backwards.
+
+**7. Vibe Coding atrophies the production muscle — keep it warm deliberately.**
+Using AI to generate code is not the problem. The problem is when you can only evaluate code you can see, but cannot produce it from a blank editor. That gap shows in interviews and in the moments when a junior is stuck and needs you to write something, not prompt something. The fix is not to stop using AI — it's to practice writing small things by hand weekly so the translation layer (intent → syntax) stays sharp. See the Vibe Coding section below.
