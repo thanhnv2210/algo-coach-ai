@@ -3022,10 +3022,12 @@ public class JavaLabRunner {
         defaultCode: `import java.util.*;
 import java.util.stream.*;
 import java.util.function.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class JavaLabRunner {
     record Employee(String name, String dept, int salary) {}
     record Order(String id, List<String> productIds) {}
+    record Transaction(String id, double amount, String status) {}
 
     public static void main(String[] args) {
         List<Employee> employees = List.of(
@@ -3128,6 +3130,230 @@ public class JavaLabRunner {
             .peek(e -> System.out.println("  [PASSED] " + e.name()))
             .limit(2)
             .forEach(e -> System.out.println("  [RESULT] " + e.name()));
+
+        // ════════════════════════════════════════════════════════
+        //  PART 9 — LOADING BIG DATA INTO A STREAM (constant memory)
+        // ════════════════════════════════════════════════════════
+
+        // ════════════════════════════════════════════════════════
+        //  PRACTICE — 10 FREEZE DRILLS (run all, internalize the patterns)
+        //  These are the exact patterns that blank under interview pressure.
+        // ════════════════════════════════════════════════════════
+
+        System.out.println("\\n═══════════════════════════════════════");
+        System.out.println(" PRACTICE — 10 Interview Reflexes");
+        System.out.println("═══════════════════════════════════════");
+
+        // Drill 1: Second largest — O(n log n) stream
+        System.out.println("\\n[Drill 1] Second largest (O(n log n) stream):");
+        int[] nums = {5, 12, 9, 21, 21, 7, 18};
+        Arrays.stream(nums).boxed()          // IntStream → Stream<Integer> (Comparator needs objects)
+            .distinct()                      // two 21s → one 21, so max doesn't steal both slots
+            .sorted(Comparator.reverseOrder())
+            .skip(1)                         // bypass the largest
+            .findFirst()                     // Optional<Integer>
+            .ifPresent(v -> System.out.println("  Stream sort: " + v));
+
+        // Drill 1b: Second largest — O(n) min-heap
+        System.out.println("[Drill 1b] Second largest (O(n) min-heap):");
+        PriorityQueue<Integer> top2Heap = new PriorityQueue<>(2);
+        Arrays.stream(nums).distinct().forEach(n -> {
+            top2Heap.offer(n);
+            if (top2Heap.size() > 2) top2Heap.poll();  // evict smallest, keep top 2
+        });
+        System.out.println("  Min-heap: " + top2Heap.peek());   // root = second largest
+
+        // Drill 1c: Second largest — O(n) single-pass reduce
+        System.out.println("[Drill 1c] Second largest (O(n) single-pass reduce):");
+        int[] top = Arrays.stream(nums).distinct().boxed()
+            .reduce(
+                new int[]{Integer.MIN_VALUE, Integer.MIN_VALUE},
+                (pair, n) -> {
+                    if (n > pair[0]) return new int[]{n, pair[0]};
+                    if (n > pair[1]) return new int[]{pair[0], n};
+                    return pair;
+                },
+                (a, b) -> a  // combiner — not used in sequential stream
+            );
+        System.out.println("  Reduce: " + top[1]);
+
+        // Drill 2: IntStream vs Stream<Integer>
+        System.out.println("\\n[Drill 2] IntStream vs Stream<Integer>:");
+        System.out.println("  sum (IntStream, no boxing): " + Arrays.stream(nums).sum());
+        System.out.println("  max boxed int:              " +
+            Arrays.stream(nums).boxed().max(Comparator.naturalOrder()).orElseThrow());
+
+        // Drill 3: Java Records
+        System.out.println("\\n[Drill 3] Java Records:");
+        record Emp(String name, String dept, int salary) {}  // local record (Java 16+)
+        var staff = List.of(
+            new Emp("Alice", "TECH", 120_000),
+            new Emp("Bob",   "TECH",  95_000),
+            new Emp("Carol", "FIN",  110_000),
+            new Emp("Diana", "TECH", 135_000),
+            new Emp("Eve",   "FIN",   88_000),
+            new Emp("Frank", "TECH", 102_000),
+            new Emp("Grace", "FIN",  145_000)
+        );
+        staff.stream()
+            .filter(e -> e.salary() > 100_000)
+            .sorted(Comparator.comparingInt(Emp::salary).reversed())
+            .forEach(e -> System.out.printf("  %-8s %,d%n", e.name(), e.salary()));
+
+        // ── Source 1: Generated test data — Stream.generate (infinite, lazy) ──
+        System.out.println("\\n=== Generated stream (Stream.generate) ===");
+        long highValue = Stream.generate(() ->
+                new Transaction(
+                    UUID.randomUUID().toString(),
+                    ThreadLocalRandom.current().nextDouble(1, 10_000),
+                    "PENDING"))
+            .limit(1_000_000)                       // materialize lazily — only 1 element in flight
+            .filter(t -> t.amount() > 9_000)
+            .count();
+        System.out.println("  Transactions > 9000: " + highValue + " (out of 1M generated)");
+
+        // ── Source 2: IntStream.range → objects (indexed generation) ──
+        System.out.println("\\n=== Indexed generation (IntStream.range) ===");
+        OptionalDouble avgSalary = IntStream.range(0, 500_000)
+            .mapToObj(i -> new Employee("emp-" + i, i % 3 == 0 ? "TECH" : "FINANCE", 50_000 + (i % 150_000)))
+            .filter(e -> "TECH".equals(e.dept()))
+            .mapToInt(Employee::salary)             // IntStream — no boxing
+            .average();
+        System.out.printf("  Average TECH salary across 500K generated employees: %,.0f%n",
+            avgSalary.orElse(0));
+
+        // ── Source 3: StreamSupport — bridge any Iterable to a Stream ──
+        System.out.println("\\n=== StreamSupport: Iterable → Stream ===");
+        Iterable<String> iterable = List.of("Alice", "Bob", "Charlie", "Diana");
+        long longNames = StreamSupport.stream(iterable.spliterator(), false /* sequential */)
+            .filter(name -> name.length() > 4)
+            .count();
+        System.out.println("  Names longer than 4 chars: " + longNames);
+
+        // ── Source 4: Stream.iterate with takeWhile — lazy pagination ──
+        System.out.println("\\n=== Lazy pagination (Stream.iterate + takeWhile) ===");
+        // Simulate paginated API: returns empty list when page > 3
+        List<List<String>> fakePagesDb = List.of(
+            List.of("txn-1", "txn-2", "txn-3"),
+            List.of("txn-4", "txn-5", "txn-6"),
+            List.of("txn-7", "txn-8"),
+            List.of()   // signals end
+        );
+        long totalTxns = Stream.iterate(0, page -> page + 1)
+            .map(page -> page < fakePagesDb.size() ? fakePagesDb.get(page) : List.<String>of())
+            .takeWhile(page -> !page.isEmpty())     // stops when page is empty — no over-fetch
+            .flatMap(List::stream)
+            .peek(id -> {})                         // in real code: process each id here
+            .count();
+        System.out.println("  Total txns across all pages: " + totalTxns);
+
+        // ── Source 5: Supplier<Stream> to reuse a stream definition ──
+        System.out.println("\\n=== Supplier<Stream> — reuse without IllegalStateException ===");
+        Supplier<Stream<Employee>> src = () -> employees.stream().filter(e -> e.salary() > 100_000);
+        long richCount  = src.get().count();
+        double richAvg  = src.get().mapToInt(Employee::salary).average().orElse(0);
+        System.out.printf("  High earners: count=%d  avg=%,.0f%n", richCount, richAvg);
+
+        // ════════════════════════════════════════════════════════
+        //  PART 10 — LAZY STREAM vs REACTIVE (simulated in plain Java)
+        //
+        //  In production:
+        //    Blocking  → Spring Data JPA  → Stream<T>  (1 thread pinned during DB IO)
+        //    Reactive  → Spring Data R2DBC → Flux<T>   (0 threads held during DB IO)
+        //
+        //  Here we simulate both approaches with in-memory data so you can
+        //  see the structural difference: pull vs push, blocking vs event-driven.
+        // ════════════════════════════════════════════════════════
+
+        System.out.println("\\n═══════════════════════════════════════");
+        System.out.println(" PART 10 — Lazy Stream vs Reactive");
+        System.out.println("═══════════════════════════════════════");
+
+        // ── Approach A: Lazy Stream (blocking pull model) ─────────────────
+        // Thread calls next(), blocks until data is ready, processes, repeats.
+        // In Spring: thread is pinned for the ENTIRE query duration.
+        System.out.println("\\n--- Approach A: Lazy Stream (blocking / pull) ---");
+        System.out.println("[Thread] Starts query — thread is now pinned to this work");
+
+        // Simulate DB rows arriving with a cursor-style iterator
+        List<Transaction> dbRows = List.of(
+            new Transaction("T001", 5_000, "PENDING"),
+            new Transaction("T002", 15_000, "PENDING"),
+            new Transaction("T003", 3_000, "PENDING"),
+            new Transaction("T004", 25_000, "PENDING"),
+            new Transaction("T005", 8_000, "PENDING")
+        );
+
+        long streamResult = dbRows.stream()           // Stream<T> — lazy, pull-based
+            .peek(t -> System.out.println("  [Thread pulls row] " + t.id()))
+            .filter(t -> t.amount() > 10_000)
+            .peek(t -> System.out.println("  [Thread processes] " + t.id() + " amount=" + t.amount()))
+            .count();
+        System.out.println("[Thread] Query done — thread released. High-value count: " + streamResult);
+        // KEY POINT: thread was blocked from start to finish.
+        // During IO wait between rows, thread cannot serve other requests.
+
+        // ── Approach B: Reactive / Push model (simulated) ─────────────────
+        // In Spring WebFlux + R2DBC:
+        //   1. Controller returns Mono/Flux — no thread held
+        //   2. Reactor subscribes and releases the thread
+        //   3. When DB emits a row (IO event), Reactor schedules onNext() on a scheduler thread
+        //   4. Thread is free between DB events
+        System.out.println("\\n--- Approach B: Reactive Flux (non-blocking / push) ---");
+        System.out.println("[Thread] Subscribes to Flux — thread is now FREE");
+
+        // Simulate Reactor's push model: producer calls our subscriber when data is ready
+        // In real R2DBC this happens via Netty IO events, not a loop
+        interface ReactiveSubscriber<T> {
+            void onNext(T item);
+            void onComplete(long count);
+        }
+
+        class SimulatedFlux {
+            private final List<Transaction> source;
+            SimulatedFlux(List<Transaction> src) { this.source = src; }
+
+            void subscribeFiltered(double threshold, ReactiveSubscriber<Transaction> subscriber) {
+                // Reactor would call onNext() from an IO event thread, not the caller's thread
+                long[] count = {0};
+                source.forEach(t -> {
+                    System.out.println("  [IO event → Reactor schedules] onNext(" + t.id() + ")");
+                    if (t.amount() > threshold) {
+                        subscriber.onNext(t);
+                        count[0]++;
+                    }
+                });
+                subscriber.onComplete(count[0]);
+            }
+        }
+
+        new SimulatedFlux(dbRows).subscribeFiltered(10_000, new ReactiveSubscriber<>() {
+            public void onNext(Transaction t) {
+                System.out.println("  [Reactor thread processes] " + t.id() + " amount=" + t.amount());
+            }
+            public void onComplete(long count) {
+                System.out.println("[Reactor] onComplete — high-value count: " + count);
+                System.out.println("[Caller thread] Was free the entire time; result delivered async");
+            }
+        });
+
+        // ── Key structural difference ─────────────────────────────────────
+        System.out.println("\\n--- Key Difference Summary ---");
+        System.out.println("  Stream (blocking):");
+        System.out.println("    Thread: pinned for entire query duration");
+        System.out.println("    Model:  pull — thread calls next(), waits for row");
+        System.out.println("    Memory: O(fetch_size) — constant");
+        System.out.println("    Back-pressure: NONE — producer goes as fast as possible");
+        System.out.println();
+        System.out.println("  Flux/R2DBC (reactive):");
+        System.out.println("    Thread: released — IO events drive scheduling");
+        System.out.println("    Model:  push — DB emits rows; Reactor delivers to subscriber");
+        System.out.println("    Memory: O(prefetch) — constant");
+        System.out.println("    Back-pressure: BUILT-IN — subscriber signals demand (limitRate)");
+        System.out.println();
+        System.out.println("  Rule: never block inside flatMap/map on a Reactor thread");
+        System.out.println("  Mixed stack: wrap blocking JPA calls with");
+        System.out.println("    Mono.fromCallable(() -> jdbcCall()).subscribeOn(Schedulers.boundedElastic())");
     }
 }`,
       },
