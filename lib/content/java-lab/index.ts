@@ -3358,6 +3358,147 @@ public class JavaLabRunner {
 }`,
       },
       {
+        slug: '14-array-two-pointer',
+        title: 'Array In-Place Manipulation — Two-Pointer Pattern',
+        order: 14,
+        difficulty: 'intermediate',
+        tags: ['two-pointers', 'arrays', 'in-place', 'partition', 'move-zeros', 'dutch-flag', 'interview-common'],
+        defaultCode: `import java.util.*;
+import java.util.stream.*;
+import java.util.function.*;
+
+public class JavaLabRunner {
+
+    // ── Solution 1: Two-pointer write (CANONICAL) ─────────────────────────
+    // O(n) time, O(1) space, in-place, preserves relative order
+    static void moveZerosRight(int[] arr) {
+        int writePos = 0;
+
+        // Pass 1: compact non-zeros to the front
+        for (int i = 0; i < arr.length; i++) {
+            if (arr[i] != 0) arr[writePos++] = arr[i];
+        }
+        // Pass 2: fill the tail with zeros
+        while (writePos < arr.length) arr[writePos++] = 0;
+    }
+
+    // ── Solution 2: Two-pointer swap (fewer writes when zeros are sparse) ─
+    static void moveZerosSwap(int[] arr) {
+        int writePos = 0;
+        for (int i = 0; i < arr.length; i++) {
+            if (arr[i] != 0) {
+                int tmp       = arr[writePos];
+                arr[writePos] = arr[i];
+                arr[i]        = tmp;
+                writePos++;
+            }
+        }
+    }
+
+    // ── Dutch national flag: sort 0s, 1s, 2s in one pass ─────────────────
+    static void dutchFlag(int[] arr) {
+        int low = 0, mid = 0, high = arr.length - 1;
+        while (mid <= high) {
+            if      (arr[mid] == 0) { swap(arr, low++, mid++); }
+            else if (arr[mid] == 1) { mid++; }
+            else                    { swap(arr, mid, high--); } // don't advance mid
+        }
+    }
+
+    static void swap(int[] arr, int i, int j) {
+        int tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+
+    public static void main(String[] args) {
+
+        // ── Why the naive bubble swap is buggy ────────────────────────────
+        System.out.println("=== Naive bubble swap (BUGGY) ===");
+        int[] buggy = {0, 1, 2, 3, 0, 0};
+        // Simulating your original approach safely (guarded to avoid AIOOBE)
+        for (int i = 0; i < buggy.length - 1; i++) {   // -1 to avoid AIOOBE on last index
+            if (buggy[i] == 0) {
+                buggy[i]   = buggy[i + 1];
+                buggy[i+1] = 0;
+            }
+        }
+        System.out.println("After 1 pass: " + Arrays.toString(buggy));
+        // [0,1,2,3,0,0] → one pass: [1,2,3,0,0,0] — happens to work here
+        // But try [0,0,1]: after i=0: [0,1,0] → after i=1: [1,0,0] ✓ (two passes needed!)
+        // And try [1,0,0,2]: after i=1: [1,0,0,2] → i=2: [1,0,2,0] — WRONG, needs another pass
+        System.out.println("Problem: needs multiple passes for [1,0,0,2] — degrades to O(n²)");
+        System.out.println("Bug 2: off-by-one — original loop goes to length, not length-1 → AIOOBE");
+
+        // ── Solution 1: Two-pointer write ─────────────────────────────────
+        System.out.println("\\n=== Two-pointer write (canonical) ===");
+        int[] arr1 = {0, 1, 2, 3, 0, 0};
+        moveZerosRight(arr1);
+        System.out.println(Arrays.toString(arr1));   // [1, 2, 3, 0, 0, 0]
+
+        int[] arr1b = {1, 0, 0, 2};                 // the case that breaks naive
+        moveZerosRight(arr1b);
+        System.out.println(Arrays.toString(arr1b));  // [1, 2, 0, 0]
+
+        // ── Solution 2: Swap variant ───────────────────────────────────────
+        System.out.println("\\n=== Two-pointer swap ===");
+        int[] arr2 = {0, 1, 2, 3, 0, 0};
+        moveZerosSwap(arr2);
+        System.out.println(Arrays.toString(arr2));   // [1, 2, 3, 0, 0, 0]
+
+        // ── Solution 3: Stream (O(n) extra space, NOT in-place) ───────────
+        System.out.println("\\n=== Stream: IntStream.concat (new array, O(n) space) ===");
+        int[] arr3 = {0, 1, 2, 3, 0, 0};
+        int[] result = IntStream.concat(
+            Arrays.stream(arr3).filter(n -> n != 0),   // non-zeros first
+            Arrays.stream(arr3).filter(n -> n == 0)    // zeros appended
+        ).toArray();
+        System.out.println(Arrays.toString(result));    // [1, 2, 3, 0, 0, 0]
+
+        // Stream with List + partitioningBy
+        System.out.println("\\n=== Stream: partitioningBy (List version) ===");
+        List<Integer> list = Arrays.asList(0, 1, 2, 3, 0, 0);
+        Map<Boolean, List<Integer>> parts = list.stream()
+            .collect(Collectors.partitioningBy(n -> n != 0));
+        List<Integer> moved = Stream.concat(
+            parts.get(true).stream(),    // true  = non-zeros
+            parts.get(false).stream()    // false = zeros
+        ).collect(Collectors.toList());
+        System.out.println(moved);
+
+        // ── The same two-pointer pattern solves many problems ─────────────
+        System.out.println("\\n=== Same pattern: remove duplicates from sorted array ===");
+        // [1, 1, 2, 3, 3, 4] → writePos keeps unique values only
+        int[] sorted = {1, 1, 2, 3, 3, 4};
+        int wp = 1;
+        for (int i = 1; i < sorted.length; i++) {
+            if (sorted[i] != sorted[i - 1]) sorted[wp++] = sorted[i];
+        }
+        System.out.println("Unique count: " + wp + " → " + Arrays.toString(Arrays.copyOf(sorted, wp)));
+
+        System.out.println("\\n=== Same pattern: move negatives to end ===");
+        int[] mixed = {-1, 3, -2, 5, 0, -4, 6};
+        int wPos = 0;
+        int[] copy = mixed.clone();
+        for (int n : copy) { if (n >= 0) mixed[wPos++] = n; }
+        for (int n : copy) { if (n < 0)  mixed[wPos++] = n; }
+        System.out.println(Arrays.toString(mixed));   // [3, 5, 0, 6, -1, -2, -4]
+
+        // ── Dutch national flag ────────────────────────────────────────────
+        System.out.println("\\n=== Dutch national flag: sort 0/1/2 in one pass ===");
+        int[] flag = {2, 0, 1, 2, 1, 0};
+        dutchFlag(flag);
+        System.out.println(Arrays.toString(flag));    // [0, 0, 1, 1, 2, 2]
+
+        // ── Interview talking points ───────────────────────────────────────
+        System.out.println("\\n=== Key Points ===");
+        System.out.println("Naive bubble: O(n²) worst case, AIOOBE on last index");
+        System.out.println("Two-pointer write: O(n) time, O(1) space — CANONICAL answer");
+        System.out.println("Stream concat: O(n) space — clean but allocates new array");
+        System.out.println("Pattern generalizes: zeros, negatives, duplicates, Dutch flag");
+        System.out.println("Tip: always clarify — in-place? preserve order? duplicates?");
+    }
+}`,
+      },
+      {
         slug: '02-interview-patterns-glossary',
         title: 'Interview Coding Patterns — Reference Glossary',
         order: 2,
